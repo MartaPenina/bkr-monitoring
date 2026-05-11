@@ -1,35 +1,16 @@
-name: CI
+name: CI/CD
 
 on:
   push:
-    branches: [main, dev]
-  pull_request:
     branches: [main]
 
+env:
+  REGISTRY: ghcr.io
+  IMAGE_PREFIX: ghcr.io/martapenina
+
 jobs:
-  lint:
-    name: Lint & Syntax Check
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
-
-      - name: Check Python syntax
-        run: |
-          python -m py_compile services/proxy/app.py
-          python -m py_compile services/history-consumer/consumer.py
-          python -m py_compile services/history-api/main.py
-          python -m py_compile services/monitoring-collector/collector.py
-          python -m py_compile services/diagnostic-engine/engine.py
-          python -m py_compile services/dashboard/app.py
-          python -m py_compile services/ui/app.py
-
-  docker:
-    name: Docker Build
+  build-and-push:
+    name: Build & Push ${{ matrix.service }}
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -49,51 +30,21 @@ jobs:
             context: ./services/dashboard
           - service: ui
             context: ./services/ui
-
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GHCR_TOKEN }}
 
-      - name: Build ${{ matrix.service }}
+      - name: Build and push ${{ matrix.service }}
         uses: docker/build-push-action@v6
         with:
           context: ${{ matrix.context }}
-          push: false
-
-  compose:
-    name: Compose Stack Test
-    runs-on: ubuntu-latest
-    needs: docker
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Start stack
-        run: docker compose up -d --build
-
-      - name: Wait for services
-        run: |
-          for i in $(seq 1 30); do
-            if curl -sf http://localhost:8085/health >/dev/null 2>&1; then
-              echo "Collector is healthy"
-              break
-            fi
-            echo "Waiting... ($i/30)"
-            sleep 5
-          done
-
-      - name: Verify service health
-        run: |
-          curl -sf http://localhost:8080/health | jq .
-          curl -sf http://localhost:8000/health | jq .
-          curl -sf http://localhost:8085/health | jq .
-          curl -sf http://localhost:8090/health | jq .
-          curl -sf http://localhost:5000/health | jq .
-
-      - name: Verify monitoring collector sees services
-        run: curl -sf http://localhost:8085/api/services | jq .
-
-      - name: Stop stack
-        if: always()
-        run: docker compose down -v
+          push: true
+          tags: |
+            ghcr.io/martapenina/bkr-${{ matrix.service }}:latest
+            ghcr.io/martapenina/bkr-${{ matrix.service }}:${{ github.sha }}
