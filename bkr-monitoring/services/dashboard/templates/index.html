@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BKR Monitoring Dashboard</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', system-ui, sans-serif; background: #0f172a; color: #e2e8f0; }
+        .header { background: #1e293b; padding: 16px 24px; border-bottom: 1px solid #334155; display: flex; align-items: center; justify-content: space-between; }
+        .header h1 { font-size: 20px; font-weight: 600; }
+        .header .badge { background: #22c55e; color: #000; padding: 4px 12px; border-radius: 12px; font-size: 12px; font-weight: 600; }
+        .header .badge.degraded { background: #eab308; }
+        .header .badge.critical { background: #ef4444; color: #fff; }
+        .container { max-width: 1400px; margin: 0 auto; padding: 24px; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 24px; }
+        .card { background: #1e293b; border: 1px solid #334155; border-radius: 12px; padding: 20px; }
+        .card h3 { font-size: 13px; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; }
+        .card .value { font-size: 28px; font-weight: 700; }
+        .service-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; margin-bottom: 24px; }
+        .service-card { background: #1e293b; border: 1px solid #334155; border-radius: 12px; padding: 20px; transition: border-color 0.2s; }
+        .service-card:hover { border-color: #475569; }
+        .service-card .status-dot { width: 12px; height: 12px; border-radius: 50%; display: inline-block; margin-right: 8px; }
+        .status-healthy { background: #22c55e; box-shadow: 0 0 8px #22c55e55; }
+        .status-degraded, .status-warning { background: #eab308; box-shadow: 0 0 8px #eab30855; }
+        .status-down, .status-critical, .status-error, .status-timeout { background: #ef4444; box-shadow: 0 0 8px #ef444455; }
+        .status-unknown { background: #64748b; }
+        .service-card .name { font-weight: 600; font-size: 16px; }
+        .service-card .meta { color: #94a3b8; font-size: 13px; margin-top: 8px; }
+        .section { margin-bottom: 32px; }
+        .section-title { font-size: 18px; font-weight: 600; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+        .incident-list { display: flex; flex-direction: column; gap: 12px; }
+        .incident { background: #1e293b; border: 1px solid #334155; border-radius: 12px; padding: 16px; cursor: pointer; transition: border-color 0.2s; }
+        .incident:hover { border-color: #475569; }
+        .incident .incident-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+        .incident .service { font-weight: 600; }
+        .incident .time { color: #64748b; font-size: 13px; }
+        .incident .severity-badge { padding: 2px 8px; border-radius: 6px; font-size: 12px; font-weight: 600; }
+        .severity-critical { background: #ef44441a; color: #ef4444; border: 1px solid #ef444433; }
+        .severity-warning { background: #eab3081a; color: #eab308; border: 1px solid #eab30833; }
+        .severity-info { background: #3b82f61a; color: #3b82f6; border: 1px solid #3b82f633; }
+        .diagnosis-panel { background: #0f172a; border: 1px solid #334155; border-radius: 8px; padding: 16px; margin-top: 12px; display: none; }
+        .diagnosis-panel.active { display: block; }
+        .diagnosis-panel h4 { color: #3b82f6; margin-bottom: 8px; }
+        .diagnosis-panel .root-cause { font-size: 15px; margin-bottom: 12px; }
+        .diagnosis-panel .chain { color: #94a3b8; margin-bottom: 8px; }
+        .diagnosis-panel .recommendation { background: #1e293b; padding: 8px 12px; border-radius: 6px; margin-bottom: 6px; font-size: 13px; }
+        .recommendation code { background: #334155; padding: 2px 6px; border-radius: 4px; font-size: 12px; }
+        .dep-graph { background: #1e293b; border: 1px solid #334155; border-radius: 12px; padding: 24px; min-height: 300px; }
+        #depCanvas { width: 100%; height: 300px; }
+        .refresh-btn { background: #3b82f6; color: #fff; border: none; padding: 8px 16px; border-radius: 8px; cursor: pointer; font-size: 13px; }
+        .refresh-btn:hover { background: #2563eb; }
+        .source-badge { font-size: 11px; padding: 2px 6px; border-radius: 4px; margin-left: 8px; }
+        .source-claude { background: #8b5cf61a; color: #8b5cf6; border: 1px solid #8b5cf633; }
+        .source-heuristic { background: #64748b1a; color: #94a3b8; border: 1px solid #64748b33; }
+        .confidence { color: #94a3b8; font-size: 12px; margin-left: 8px; }
+        .empty-state { color: #64748b; text-align: center; padding: 40px; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🔍 BKR Monitoring & Diagnostics</h1>
+        <div>
+            <button class="refresh-btn" onclick="refreshAll()">⟳ Оновити</button>
+            <span id="systemBadge" class="badge">Завантаження...</span>
+        </div>
+    </div>
+
+    <div class="container">
+        <!-- Stats cards -->
+        <div class="grid" id="statsGrid">
+            <div class="card"><h3>Сервіси</h3><div class="value" id="totalServices">—</div></div>
+            <div class="card"><h3>Здорові</h3><div class="value" id="healthyCount">—</div></div>
+            <div class="card"><h3>Інциденти (24г)</h3><div class="value" id="incidentCount">—</div></div>
+            <div class="card"><h3>LLM діагнозів</h3><div class="value" id="diagnosisCount">—</div></div>
+        </div>
+
+        <!-- Service status -->
+        <div class="section">
+            <div class="section-title">📡 Стан сервісів</div>
+            <div class="service-grid" id="serviceGrid"></div>
+        </div>
+
+        <!-- Dependency graph -->
+        <div class="section">
+            <div class="section-title">🔗 Граф залежностей</div>
+            <div class="dep-graph">
+                <canvas id="depCanvas"></canvas>
+            </div>
+        </div>
+
+        <!-- Incident log -->
+        <div class="section">
+            <div class="section-title">🚨 Журнал інцидентів</div>
+            <div class="incident-list" id="incidentList">
+                <div class="empty-state">Завантаження інцидентів...</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ── Data fetching ──────────────────────────────────────────────
+        async function fetchJSON(url) {
+            try {
+                const resp = await fetch(url);
+                if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+                return await resp.json();
+            } catch (e) {
+                console.error(`Fetch ${url}:`, e);
+                return null;
+            }
+        }
+
+        // ── Render services ────────────────────────────────────────────
+        async function renderServices() {
+            const data = await fetchJSON('/api/services');
+            const grid = document.getElementById('serviceGrid');
+            if (!data) { grid.innerHTML = '<div class="empty-state">Collector недоступний</div>'; return; }
+
+            let healthy = 0, total = 0;
+            let html = '';
+            for (const [name, state] of Object.entries(data)) {
+                total++;
+                const status = state.status || 'unknown';
+                if (status === 'healthy') healthy++;
+
+                const respTime = state.last_response_time
+                    ? `${(state.last_response_time * 1000).toFixed(0)}ms`
+                    : '—';
+                const lastCheck = state.last_check
+                    ? new Date(state.last_check).toLocaleTimeString('uk-UA')
+                    : '—';
+
+                html += `
+                    <div class="service-card">
+                        <div>
+                            <span class="status-dot status-${status}"></span>
+                            <span class="name">${name}</span>
+                        </div>
+                        <div class="meta">
+                            Статус: ${status} · Відповідь: ${respTime} · Перевірка: ${lastCheck}
+                            ${state.consecutive_failures > 0 ? `<br>⚠ Послідовних збоїв: ${state.consecutive_failures}` : ''}
+                        </div>
+                    </div>`;
+            }
+            grid.innerHTML = html;
+            document.getElementById('totalServices').textContent = total;
+            document.getElementById('healthyCount').textContent = healthy;
+
+            // System badge
+            const badge = document.getElementById('systemBadge');
+            if (healthy === total) { badge.textContent = 'Все OK'; badge.className = 'badge'; }
+            else if (healthy >= total / 2) { badge.textContent = 'Деградація'; badge.className = 'badge degraded'; }
+            else { badge.textContent = 'Критично'; badge.className = 'badge critical'; }
+        }
+
+        // ── Render incidents ───────────────────────────────────────────
+        async function renderIncidents() {
+            const data = await fetchJSON('/api/incidents');
+            const list = document.getElementById('incidentList');
+            if (!data || data.length === 0) {
+                list.innerHTML = '<div class="empty-state">Інцидентів поки немає</div>';
+                document.getElementById('incidentCount').textContent = '0';
+                return;
+            }
+
+            document.getElementById('incidentCount').textContent = data.length;
+            let llmCount = 0;
+
+            let html = '';
+            for (const inc of data) {
+                const diag = inc.diagnosis;
+                const isLLM = diag && diag.diagnosis_source === 'claude_api';
+                if (isLLM) llmCount++;
+                const sourceClass = isLLM ? 'source-claude' : 'source-heuristic';
+                const sourceLabel = isLLM ? 'Claude AI' : 'Евристика';
+
+                const time = inc.created_at ? new Date(inc.created_at).toLocaleString('uk-UA') : '—';
+
+                html += `
+                    <div class="incident" onclick="toggleDiagnosis(${inc.id})">
+                        <div class="incident-header">
+                            <span>
+                                <span class="service">${inc.service_name}</span>
+                                <span class="severity-badge severity-${inc.severity}">${inc.severity}</span>
+                                ${diag ? `<span class="source-badge ${sourceClass}">${sourceLabel}</span>` : ''}
+                                ${diag && diag.confidence ? `<span class="confidence">${(diag.confidence * 100).toFixed(0)}% впевненість</span>` : ''}
+                            </span>
+                            <span class="time">${time}</span>
+                        </div>
+                        <div style="color: #94a3b8; font-size: 13px;">${inc.incident_type}: ${inc.description ? inc.description.substring(0, 120) : '—'}</div>
+                        ${diag ? renderDiagnosis(inc.id, diag) : '<div style="color: #64748b; font-size: 12px; margin-top: 8px;">Діагноз відсутній</div>'}
+                    </div>`;
+            }
+            list.innerHTML = html;
+            document.getElementById('diagnosisCount').textContent = llmCount;
+        }
+
+        function renderDiagnosis(id, diag) {
+            const recs = (diag.recommendations || []).map(r =>
+                `<div class="recommendation">
+                    <strong>${r.priority === 'immediate' ? '🔴' : r.priority === 'short-term' ? '🟡' : '🟢'} ${r.action}</strong>
+                    ${r.command ? `<br><code>${r.command}</code>` : ''}
+                </div>`
+            ).join('');
+
+            const chain = (diag.fault_chain || []).join(' → ');
+
+            return `
+                <div class="diagnosis-panel" id="diag-${id}">
+                    <h4>🧠 Діагноз</h4>
+                    <div class="root-cause"><strong>Причина:</strong> ${diag.root_cause || '—'}</div>
+                    ${chain ? `<div class="chain"><strong>Ланцюжок збою:</strong> ${chain}</div>` : ''}
+                    ${diag.fault_chain_explanation ? `<div class="chain" style="font-size:13px">${diag.fault_chain_explanation}</div>` : ''}
+                    ${diag.predicted_impact && diag.predicted_impact.length ? `<div class="chain"><strong>Прогноз впливу:</strong> ${diag.predicted_impact.join(', ')}</div>` : ''}
+                    <h4 style="margin-top: 12px;">📋 Рекомендації</h4>
+                    ${recs || '<div style="color: #64748b;">Немає</div>'}
+                </div>`;
+        }
+
+        function toggleDiagnosis(id) {
+            const el = document.getElementById(`diag-${id}`);
+            if (el) el.classList.toggle('active');
+        }
+
+        // ── Dependency graph (canvas) ──────────────────────────────────
+        async function renderDepGraph() {
+            const mapData = await fetchJSON('/api/service-map');
+            const states = await fetchJSON('/api/services');
+            if (!mapData || !mapData.services) return;
+
+            const canvas = document.getElementById('depCanvas');
+            const ctx = canvas.getContext('2d');
+            canvas.width = canvas.parentElement.clientWidth - 48;
+            canvas.height = 300;
+
+            const services = Object.keys(mapData.services);
+            const positions = {};
+            const cols = Math.ceil(Math.sqrt(services.length));
+            const cellW = canvas.width / (cols + 1);
+            const cellH = canvas.height / (Math.ceil(services.length / cols) + 1);
+
+            services.forEach((name, i) => {
+                const col = i % cols;
+                const row = Math.floor(i / cols);
+                positions[name] = {
+                    x: cellW * (col + 1),
+                    y: cellH * (row + 1),
+                };
+            });
+
+            // Draw edges
+            ctx.strokeStyle = '#334155';
+            ctx.lineWidth = 1.5;
+            for (const [name, cfg] of Object.entries(mapData.services)) {
+                for (const dep of (cfg.depends_on || [])) {
+                    if (positions[dep] && positions[name]) {
+                        ctx.beginPath();
+                        ctx.moveTo(positions[dep].x, positions[dep].y);
+                        ctx.lineTo(positions[name].x, positions[name].y);
+                        ctx.stroke();
+
+                        // Arrow
+                        const dx = positions[name].x - positions[dep].x;
+                        const dy = positions[name].y - positions[dep].y;
+                        const angle = Math.atan2(dy, dx);
+                        const midX = (positions[dep].x + positions[name].x) / 2;
+                        const midY = (positions[dep].y + positions[name].y) / 2;
+                        ctx.beginPath();
+                        ctx.moveTo(midX, midY);
+                        ctx.lineTo(midX - 8 * Math.cos(angle - 0.4), midY - 8 * Math.sin(angle - 0.4));
+                        ctx.moveTo(midX, midY);
+                        ctx.lineTo(midX - 8 * Math.cos(angle + 0.4), midY - 8 * Math.sin(angle + 0.4));
+                        ctx.stroke();
+                    }
+                }
+            }
+
+            // Draw nodes
+            for (const [name, pos] of Object.entries(positions)) {
+                const status = states && states[name] ? states[name].status : 'unknown';
+                const colors = {
+                    healthy: '#22c55e', degraded: '#eab308', warning: '#eab308',
+                    down: '#ef4444', error: '#ef4444', timeout: '#ef4444', unknown: '#64748b',
+                    unhealthy: '#ef4444',
+                };
+                const color = colors[status] || '#64748b';
+
+                ctx.beginPath();
+                ctx.arc(pos.x, pos.y, 22, 0, Math.PI * 2);
+                ctx.fillStyle = color + '22';
+                ctx.fill();
+                ctx.strokeStyle = color;
+                ctx.lineWidth = 2;
+                ctx.stroke();
+
+                ctx.fillStyle = '#e2e8f0';
+                ctx.font = '11px Segoe UI, system-ui';
+                ctx.textAlign = 'center';
+                ctx.fillText(name, pos.x, pos.y + 36);
+
+                // Status icon
+                ctx.beginPath();
+                ctx.arc(pos.x, pos.y, 6, 0, Math.PI * 2);
+                ctx.fillStyle = color;
+                ctx.fill();
+            }
+        }
+
+        // ── Refresh all ────────────────────────────────────────────────
+        async function refreshAll() {
+            await Promise.all([renderServices(), renderIncidents(), renderDepGraph()]);
+        }
+
+        // Initial load + auto-refresh every 15s
+        refreshAll();
+        setInterval(refreshAll, 15000);
+    </script>
+</body>
+</html>

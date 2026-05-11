@@ -1,0 +1,15 @@
+# Dashboard role: verify dashboard is accessible
+---
+- name: Verify dashboard is healthy
+  uri:
+    url: "http://localhost:5000/health"
+    method: GET
+    status_code: 200
+  retries: 12
+  delay: 5
+  register: dashboard_health
+  until: dashboard_health.status == 200
+
+- name: Display dashboard URL
+  debug:
+    msg: "Dashboard available at http://{{ ansible_host }}:5000"

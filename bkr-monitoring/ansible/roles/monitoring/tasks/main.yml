@@ -1,0 +1,28 @@
+# Monitoring role: ensure collector and diagnostic engine are running
+---
+- name: Verify monitoring collector is healthy
+  uri:
+    url: "http://localhost:8085/health"
+    method: GET
+    status_code: 200
+  retries: 12
+  delay: 5
+  register: collector_health
+  until: collector_health.status == 200
+
+- name: Verify diagnostic engine is healthy
+  uri:
+    url: "http://localhost:8090/health"
+    method: GET
+    status_code: 200
+  retries: 12
+  delay: 5
+  register: engine_health
+  until: engine_health.status == 200
+
+- name: Display monitoring status
+  debug:
+    msg: >
+      Collector: {{ collector_health.json.status | default('unknown') }},
+      Engine: {{ engine_health.json.status | default('unknown') }},
+      LLM available: {{ engine_health.json.llm_available | default(false) }}

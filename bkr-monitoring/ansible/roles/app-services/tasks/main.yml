@@ -1,0 +1,53 @@
+# App services role: sync code and run Docker Compose
+---
+- name: Create app directory
+  file:
+    path: /opt/bkr-monitoring
+    state: directory
+    owner: ops
+    group: ops
+    mode: '0755'
+
+- name: Sync project files
+  synchronize:
+    src: "{{ playbook_dir }}/../"
+    dest: /opt/bkr-monitoring/
+    rsync_opts:
+      - "--exclude=.git"
+      - "--exclude=terraform"
+      - "--exclude=ansible"
+      - "--exclude=docs"
+      - "--exclude=__pycache__"
+
+- name: Create environment file
+  template:
+    src: "{{ playbook_dir }}/templates/env.j2"
+    dest: /opt/bkr-monitoring/.env
+    owner: ops
+    group: ops
+    mode: '0640'
+  when: env_template is defined
+
+- name: Build and start services
+  shell: docker compose up -d --build
+  args:
+    chdir: /opt/bkr-monitoring
+
+- name: Wait for services to be healthy
+  uri:
+    url: "http://localhost:{{ item.port }}/health"
+    method: GET
+    status_code: 200
+  retries: 12
+  delay: 5
+  register: result
+  until: result.status == 200
+  loop:
+    - { name: proxy, port: 8080 }
+    - { name: history-api, port: 8000 }
+    - { name: monitoring-collector, port: 8085 }
+  ignore_errors: yes
+
+- name: Remove dangling Docker images
+  shell: docker image prune -f
+  changed_when: false

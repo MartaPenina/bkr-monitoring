@@ -1,0 +1,6 @@
+# Copy to terraform.tfvars and fill in your values
+# terraform.tfvars is gitignored
+
+gcp_project          = "your-gcp-project-id"
+gcp_credentials_file = "/path/to/service-account-key.json"
+aws_profile          = "default"

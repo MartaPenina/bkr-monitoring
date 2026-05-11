@@ -1,0 +1,145 @@
+# BKR Monitoring System — Local Development Stack
+#
+# Starts all microservices + monitoring + diagnostic engine + dashboard.
+# Usage:
+#   docker compose up -d --build
+#   docker compose logs -f
+#   open http://localhost:5000 (dashboard)
+
+name: bkr-monitoring
+
+services:
+  # ── Layer 1: Microservices (object of monitoring) ──────────────────────
+
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: monitor
+      POSTGRES_PASSWORD: monitor
+      POSTGRES_DB: monitor
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U monitor -d monitor"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 5s
+
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+
+  proxy:
+    build: ./services/proxy
+    environment:
+      RABBITMQ_URL: amqp://guest:guest@rabbitmq:5672/
+      PORT: "8080"
+      FETCH_INTERVAL: "30"
+    ports:
+      - "8080:8080"
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+
+  history-consumer:
+    build: ./services/history-consumer
+    environment:
+      DATABASE_URL: postgresql://monitor:monitor@postgres:5432/monitor
+      RABBITMQ_URL: amqp://guest:guest@rabbitmq:5672/
+      PORT: "8081"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+
+  history-api:
+    build: ./services/history-api
+    environment:
+      DATABASE_URL: postgresql://monitor:monitor@postgres:5432/monitor
+      PORT: "8000"
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/health')\""]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+
+  ui:
+    build: ./services/ui
+    environment:
+      PROXY_URL: http://proxy:8080
+      HISTORY_URL: http://history-api:8000
+      PORT: "80"
+    ports:
+      - "3000:80"
+    depends_on:
+      - proxy
+      - history-api
+
+  # ── Layer 2: Monitoring Collector ──────────────────────────────────────
+
+  monitoring-collector:
+    build: ./services/monitoring-collector
+    environment:
+      DATABASE_URL: postgresql://monitor:monitor@postgres:5432/monitor
+      DIAGNOSTIC_ENGINE_URL: http://diagnostic-engine:8090
+      POLL_INTERVAL: "30"
+      PORT: "8085"
+      RESPONSE_TIME_THRESHOLD: "5.0"
+      CONSECUTIVE_FAILURES_THRESHOLD: "2"
+    ports:
+      - "8085:8085"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  # ── Layer 3: LLM Diagnostic Engine ────────────────────────────────────
+
+  diagnostic-engine:
+    build: ./services/diagnostic-engine
+    environment:
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      CLAUDE_MODEL: claude-sonnet-4-20250514
+      PORT: "8090"
+      MAX_TOKENS: "2048"
+      MIN_DIAGNOSIS_INTERVAL: "30"
+    ports:
+      - "8090:8090"
+
+  # ── Dashboard ─────────────────────────────────────────────────────────
+
+  dashboard:
+    build: ./services/dashboard
+    environment:
+      DATABASE_URL: postgresql://monitor:monitor@postgres:5432/monitor
+      COLLECTOR_URL: http://monitoring-collector:8085
+      DIAGNOSTIC_URL: http://diagnostic-engine:8090
+      PORT: "5000"
+    ports:
+      - "5000:5000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  postgres-data:

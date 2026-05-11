@@ -1,0 +1,88 @@
+# Service Dependency Map
+# Defines relationships between microservices for fault chain analysis.
+# The monitoring collector and diagnostic engine use this to understand
+# how failures propagate through the system.
+
+services:
+  web-ui:
+    url: "http://ui:80"
+    health_endpoint: "/health"
+    port: 80
+    depends_on:
+      - api-proxy
+      - history-api
+    description: "Frontend web interface serving React SPA via nginx"
+
+  api-proxy:
+    url: "http://proxy:8080"
+    health_endpoint: "/health"
+    port: 8080
+    depends_on:
+      - rabbitmq
+    description: "API gateway that fetches external data and publishes to queue"
+
+  rabbitmq:
+    url: "http://rabbitmq:15672"
+    health_endpoint: "/api/healthchecks/node"
+    port: 5672
+    management_port: 15672
+    depends_on: []
+    description: "Message broker for async communication between services"
+    metrics:
+      - queue_depth
+      - consumers_count
+      - publish_rate
+
+  history-consumer:
+    url: "http://history-consumer:8081"
+    health_endpoint: "/health"
+    port: 8081
+    depends_on:
+      - rabbitmq
+      - database
+    description: "Consumes queue messages and persists data to PostgreSQL"
+
+  history-api:
+    url: "http://history-api:8000"
+    health_endpoint: "/health"
+    port: 8000
+    depends_on:
+      - database
+    description: "Read-only REST API for historical data from PostgreSQL"
+
+  database:
+    url: "http://postgres:5432"
+    health_endpoint: null
+    port: 5432
+    depends_on: []
+    description: "PostgreSQL + TimescaleDB for data and time-series metrics"
+    health_check_method: "tcp"
+    metrics:
+      - active_connections
+      - database_size
+      - replication_lag
+
+# Fault propagation chains (precomputed for LLM context)
+# These help the diagnostic engine quickly identify cascading failures
+fault_chains:
+  database_down:
+    root: database
+    affected:
+      - history-consumer
+      - history-api
+      - web-ui
+    description: "DB failure breaks all data persistence and retrieval"
+
+  rabbitmq_down:
+    root: rabbitmq
+    affected:
+      - api-proxy
+      - history-consumer
+      - web-ui
+    description: "Queue failure breaks async data pipeline"
+
+  proxy_down:
+    root: api-proxy
+    affected:
+      - web-ui
+    description: "Proxy failure means no live data for frontend"

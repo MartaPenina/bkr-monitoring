@@ -1,0 +1,39 @@
+# BKR Monitoring — Main Ansible Playbook
+# Usage:
+#   ansible-playbook -i inventory.ini site.yml          # full deployment
+#   ansible-playbook -i inventory.ini site.yml --tags common  # only common role
+---
+- name: Common setup on all VMs
+  hosts: all
+  become: true
+  roles:
+    - common
+  tags: [common]
+
+- name: Deploy microservices on services VM
+  hosts: services
+  become: true
+  roles:
+    - app-services
+  tags: [services]
+
+- name: Deploy data services on data VM
+  hosts: data
+  become: true
+  roles:
+    - app-services
+  tags: [data]
+
+- name: Deploy monitoring stack on services VM
+  hosts: services
+  become: true
+  roles:
+    - monitoring
+  tags: [monitoring]
+
+- name: Deploy dashboard on data VM
+  hosts: data
+  become: true
+  roles:
+    - dashboard-role
+  tags: [dashboard]
