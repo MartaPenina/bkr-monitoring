@@ -52,7 +52,7 @@
 
 - name: Add ops user to docker group
   user:
-    name: ops
+    name: bkr_ops
     groups: docker
     append: yes
 
