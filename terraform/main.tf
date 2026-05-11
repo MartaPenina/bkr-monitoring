@@ -30,7 +30,7 @@ module "gcp_vm" {
   source         = "./modules/gcp_vm"
   config         = local.config
   subnetwork     = module.gcp_network[0].subnet_id
-  ssh_public_key = file("${pathexpand("~")}/.ssh/id_ed25519.pub")
+  ssh_public_key = file("D:/ssh-keys/id_ed25519.pub")
 }
 
 module "gcp_cloudsql" {
@@ -58,7 +58,7 @@ module "aws_vm" {
   count             = local.cloud == "aws" ? 1 : 0
   source            = "./modules/aws_vm"
   config            = local.config
-  ssh_public_key    = file("${pathexpand("~")}/.ssh/id_ed25519.pub")
+  ssh_public_key    = file("D:/ssh-keys/id_ed25519.pub")
   public_subnet_id  = module.aws_network[0].public_subnet_id
   private_subnet_id = module.aws_network[0].private_subnet_id
   jump_host_sg_id   = module.aws_security[0].jump_host_sg_id

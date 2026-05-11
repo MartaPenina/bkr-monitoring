@@ -1,69 +1,58 @@
-# Common role: Install Docker Engine + Compose plugin on all VMs
 ---
 - name: Update apt cache
   apt:
     update_cache: yes
     cache_valid_time: 3600
 
-- name: Install prerequisite packages
+- name: Upgrade all packages
+  apt:
+    upgrade: safe
+
+- name: Install base packages
   apt:
     name:
-      - apt-transport-https
-      - ca-certificates
       - curl
-      - gnupg
-      - lsb-release
-      - python3-pip
-      - jq
       - htop
+      - jq
+      - acl
+      - unattended-upgrades
     state: present
 
-- name: Add Docker GPG key
-  shell: |
-    install -m 0755 -d /etc/apt/keyrings
-    curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
-    chmod a+r /etc/apt/keyrings/docker.asc
-  args:
-    creates: /etc/apt/keyrings/docker.asc
+- name: Set timezone to UTC
+  timezone:
+    name: UTC
 
-- name: Add Docker repository
-  shell: |
-    echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] \
-    https://download.docker.com/linux/ubuntu $(. /etc/os-release && echo $VERSION_CODENAME) stable" \
-    > /etc/apt/sources.list.d/docker.list
-  args:
-    creates: /etc/apt/sources.list.d/docker.list
-
-- name: Install Docker Engine
-  apt:
-    name:
-      - docker-ce
-      - docker-ce-cli
-      - containerd.io
-      - docker-compose-plugin
-    state: present
-    update_cache: yes
-
-- name: Start and enable Docker
-  service:
-    name: docker
-    state: started
+- name: Ensure systemd-timesyncd is running
+  systemd:
+    name: systemd-timesyncd
     enabled: yes
+    state: started
 
-- name: Add ops user to docker group
-  user:
-    name: bkr_ops
-    groups: docker
-    append: yes
+- name: Install UFW
+  apt:
+    name: ufw
+    state: present
 
-- name: Configure UFW defaults
-  ufw:
-    state: enabled
-    default: deny
+- name: Set UFW default deny incoming
+  community.general.ufw:
     direction: incoming
+    policy: deny
+  notify: Reload UFW
 
-- name: Allow SSH on custom port
-  ufw:
+- name: Set UFW default allow outgoing
+  community.general.ufw:
+    direction: outgoing
+    policy: allow
+  notify: Reload UFW
+
+- name: Allow configured ports through UFW
+  community.general.ufw:
     rule: allow
-    port: "9922"
+    port: "{{ item }}"
     proto: tcp
+  loop: "{{ common_allowed_ports }}"
+  notify: Reload UFW
+
+- name: Enable UFW
+  community.general.ufw:
+    state: enabled
