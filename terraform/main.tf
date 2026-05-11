@@ -33,6 +33,13 @@ module "gcp_vm" {
   ssh_public_key = file("${pathexpand("~")}/.ssh/id_ed25519.pub")
 }
 
+module "gcp_cloudsql" {
+  count  = local.cloud == "gcp" ? 1 : 0
+  source = "./modules/gcp_cloudsql"
+  config = local.config
+  vpc_id = module.gcp_network[0].vpc_id
+}
+
 # ── AWS modules (active when cloud = "aws") ───────────────────────────────────
 module "aws_network" {
   count  = local.cloud == "aws" ? 1 : 0
