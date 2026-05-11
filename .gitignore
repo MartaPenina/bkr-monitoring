@@ -36,3 +36,5 @@ Thumbs.db
 
 # Logs
 *.log
+bkr-key.json
+terraform/bkr-key.json

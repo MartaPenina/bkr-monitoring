@@ -1,0 +1,66 @@
+general:
+  cloud: "gcp"
+  project_id: "sixth-hawk-496014-a4"
+  location: "europe"
+  disk_size: 10
+  ssh_port: "9922"
+  ops_user: "bkr_ops"
+ 
+locations:
+  europe:
+    gcp:
+      region: "europe-central2"
+      zones:
+        primary: "europe-central2-a"
+        secondary: "europe-central2-b"
+    aws:
+      region: "eu-central-1"
+      zones:
+        primary: "eu-central-1a"
+        secondary: "eu-central-1b"
+  us:
+    gcp:
+      region: "us-central1"
+      zones:
+        primary: "us-central1-a"
+        secondary: "us-central1-b"
+    aws:
+      region: "us-east-1"
+      zones:
+        primary: "us-east-1a"
+        secondary: "us-east-1b"
+ 
+images:
+  ubuntu_2404:
+    gcp: "ubuntu-os-cloud/ubuntu-2404-lts-amd64"
+    aws: "ami-0084a47cc718c111a"
+ 
+sizes:
+  small:
+    gcp: "e2-micro"
+    aws: "t3.micro"
+  medium:
+    gcp: "e2-small"
+    aws: "t3.small"
+ 
+vms:
+  jump-host:
+    size: small
+    zone: primary
+    tags: ["jump-host"]
+    public_ip: true
+  node-01:
+    size: small
+    zone: primary
+    tags: ["internal", "history", "queue"]
+    public_ip: false
+  node-02:
+    size: small
+    zone: primary
+    tags: ["internal", "proxy", "ui"]
+    public_ip: false
+  node-03:
+    size: small
+    zone: secondary
+    tags: ["internal", "monitoring", "dashboard", "diagnostic"]
+    public_ip: true
