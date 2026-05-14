@@ -308,14 +308,28 @@ def get_recent_metrics(service_name: str, limit: int = 10) -> list:
             )
             rows = cur.fetchall()
         conn.close()
-        return [dict(r) for r in rows]
+        result = []
+        for r in rows:
+            row = dict(r)
+            for k, v in row.items():
+                if hasattr(v, 'isoformat'):
+                    row[k] = v.isoformat()
+            result.append(row)
+        return result
     except Exception:
         return []
 
 
 def get_all_service_states() -> dict:
     with _state_lock:
-        return {k: dict(v) for k, v in _service_state.items()}
+        result = {}
+        for k, v in _service_state.items():
+            row = dict(v)
+            for key, val in row.items():
+                if hasattr(val, 'isoformat'):
+                    row[key] = val.isoformat()
+            result[k] = row
+        return result
 
 
 def trigger_diagnosis(service_name: str, anomaly: dict, incident_id: int):
@@ -471,7 +485,14 @@ def api_incidents():
             )
             rows = cur.fetchall()
         conn.close()
-        return jsonify([dict(r) for r in rows])
+        result = []
+        for r in rows:
+            row = dict(r)
+            for k, v in row.items():
+                if hasattr(v, 'isoformat'):
+                    row[k] = v.isoformat()
+            result.append(row)
+        return jsonify(result)
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 

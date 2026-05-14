@@ -5,7 +5,7 @@
 
 services:
   web-ui:
-    url: "http://ui:80"
+    url: "http://10.0.1.11:3000"
     health_endpoint: "/health"
     port: 80
     depends_on:
@@ -14,7 +14,7 @@ services:
     description: "Frontend web interface serving React SPA via nginx"
 
   api-proxy:
-    url: "http://proxy:8080"
+    url: "http://10.0.1.13:8080"
     health_endpoint: "/health"
     port: 8080
     depends_on:
@@ -22,7 +22,7 @@ services:
     description: "API gateway that fetches external data and publishes to queue"
 
   rabbitmq:
-    url: "http://rabbitmq:15672"
+    url: "http://10.0.1.13:15672"
     health_endpoint: "/api/healthchecks/node"
     port: 5672
     management_port: 15672
@@ -34,7 +34,7 @@ services:
       - publish_rate
 
   history-consumer:
-    url: "http://history-consumer:8081"
+    url: "http://10.0.1.12:8081"
     health_endpoint: "/health"
     port: 8081
     depends_on:
@@ -43,7 +43,7 @@ services:
     description: "Consumes queue messages and persists data to PostgreSQL"
 
   history-api:
-    url: "http://history-api:8000"
+    url: "http://10.0.1.12:8000"
     health_endpoint: "/health"
     port: 8000
     depends_on:
@@ -51,7 +51,7 @@ services:
     description: "Read-only REST API for historical data from PostgreSQL"
 
   database:
-    url: "http://postgres:5432"
+    url: "http://10.205.0.3:5432"
     health_endpoint: null
     port: 5432
     depends_on: []

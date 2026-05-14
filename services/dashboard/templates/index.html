@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="uk">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -61,45 +61,40 @@
     <div class="header">
         <h1>🔍 BKR Monitoring & Diagnostics</h1>
         <div>
-            <button class="refresh-btn" onclick="refreshAll()">⟳ Оновити</button>
-            <span id="systemBadge" class="badge">Завантаження...</span>
+            <button class="refresh-btn" onclick="refreshAll()">⟳ Refresh</button>
+            <span id="systemBadge" class="badge">Loading...</span>
         </div>
     </div>
 
     <div class="container">
-        <!-- Stats cards -->
         <div class="grid" id="statsGrid">
-            <div class="card"><h3>Сервіси</h3><div class="value" id="totalServices">—</div></div>
-            <div class="card"><h3>Здорові</h3><div class="value" id="healthyCount">—</div></div>
-            <div class="card"><h3>Інциденти (24г)</h3><div class="value" id="incidentCount">—</div></div>
-            <div class="card"><h3>LLM діагнозів</h3><div class="value" id="diagnosisCount">—</div></div>
+            <div class="card"><h3>Services</h3><div class="value" id="totalServices">—</div></div>
+            <div class="card"><h3>Healthy</h3><div class="value" id="healthyCount">—</div></div>
+            <div class="card"><h3>Incidents (24h)</h3><div class="value" id="incidentCount">—</div></div>
+            <div class="card"><h3>LLM Diagnoses</h3><div class="value" id="diagnosisCount">—</div></div>
         </div>
 
-        <!-- Service status -->
         <div class="section">
-            <div class="section-title">📡 Стан сервісів</div>
+            <div class="section-title">📡 Service Status</div>
             <div class="service-grid" id="serviceGrid"></div>
         </div>
 
-        <!-- Dependency graph -->
         <div class="section">
-            <div class="section-title">🔗 Граф залежностей</div>
+            <div class="section-title">🔗 Dependency Graph</div>
             <div class="dep-graph">
                 <canvas id="depCanvas"></canvas>
             </div>
         </div>
 
-        <!-- Incident log -->
         <div class="section">
-            <div class="section-title">🚨 Журнал інцидентів</div>
+            <div class="section-title">🚨 Incident Log</div>
             <div class="incident-list" id="incidentList">
-                <div class="empty-state">Завантаження інцидентів...</div>
+                <div class="empty-state">Loading incidents...</div>
             </div>
         </div>
     </div>
 
     <script>
-        // ── Data fetching ──────────────────────────────────────────────
         async function fetchJSON(url) {
             try {
                 const resp = await fetch(url);
@@ -111,11 +106,10 @@
             }
         }
 
-        // ── Render services ────────────────────────────────────────────
         async function renderServices() {
             const data = await fetchJSON('/api/services');
             const grid = document.getElementById('serviceGrid');
-            if (!data) { grid.innerHTML = '<div class="empty-state">Collector недоступний</div>'; return; }
+            if (!data) { grid.innerHTML = '<div class="empty-state">Collector unavailable</div>'; return; }
 
             let healthy = 0, total = 0;
             let html = '';
@@ -128,7 +122,7 @@
                     ? `${(state.last_response_time * 1000).toFixed(0)}ms`
                     : '—';
                 const lastCheck = state.last_check
-                    ? new Date(state.last_check).toLocaleTimeString('uk-UA')
+                    ? new Date(state.last_check).toLocaleTimeString('en-US')
                     : '—';
 
                 html += `
@@ -138,8 +132,8 @@
                             <span class="name">${name}</span>
                         </div>
                         <div class="meta">
-                            Статус: ${status} · Відповідь: ${respTime} · Перевірка: ${lastCheck}
-                            ${state.consecutive_failures > 0 ? `<br>⚠ Послідовних збоїв: ${state.consecutive_failures}` : ''}
+                            Status: ${status} · Response: ${respTime} · Check: ${lastCheck}
+                            ${state.consecutive_failures > 0 ? `<br>⚠ Consecutive failures: ${state.consecutive_failures}` : ''}
                         </div>
                     </div>`;
             }
@@ -147,19 +141,17 @@
             document.getElementById('totalServices').textContent = total;
             document.getElementById('healthyCount').textContent = healthy;
 
-            // System badge
             const badge = document.getElementById('systemBadge');
-            if (healthy === total) { badge.textContent = 'Все OK'; badge.className = 'badge'; }
-            else if (healthy >= total / 2) { badge.textContent = 'Деградація'; badge.className = 'badge degraded'; }
-            else { badge.textContent = 'Критично'; badge.className = 'badge critical'; }
+            if (healthy === total) { badge.textContent = 'All OK'; badge.className = 'badge'; }
+            else if (healthy >= total / 2) { badge.textContent = 'Degraded'; badge.className = 'badge degraded'; }
+            else { badge.textContent = 'Critical'; badge.className = 'badge critical'; }
         }
 
-        // ── Render incidents ───────────────────────────────────────────
         async function renderIncidents() {
             const data = await fetchJSON('/api/incidents');
             const list = document.getElementById('incidentList');
             if (!data || data.length === 0) {
-                list.innerHTML = '<div class="empty-state">Інцидентів поки немає</div>';
+                list.innerHTML = '<div class="empty-state">No incidents yet</div>';
                 document.getElementById('incidentCount').textContent = '0';
                 return;
             }
@@ -173,9 +165,9 @@
                 const isLLM = diag && diag.diagnosis_source === 'claude_api';
                 if (isLLM) llmCount++;
                 const sourceClass = isLLM ? 'source-claude' : 'source-heuristic';
-                const sourceLabel = isLLM ? 'Claude AI' : 'Евристика';
+                const sourceLabel = isLLM ? 'Claude AI' : 'Heuristic';
 
-                const time = inc.created_at ? new Date(inc.created_at).toLocaleString('uk-UA') : '—';
+                const time = inc.created_at ? new Date(inc.created_at).toLocaleString('en-US') : '—';
 
                 html += `
                     <div class="incident" onclick="toggleDiagnosis(${inc.id})">
@@ -184,12 +176,12 @@
                                 <span class="service">${inc.service_name}</span>
                                 <span class="severity-badge severity-${inc.severity}">${inc.severity}</span>
                                 ${diag ? `<span class="source-badge ${sourceClass}">${sourceLabel}</span>` : ''}
-                                ${diag && diag.confidence ? `<span class="confidence">${(diag.confidence * 100).toFixed(0)}% впевненість</span>` : ''}
+                                ${diag && diag.confidence ? `<span class="confidence">${(diag.confidence * 100).toFixed(0)}% confidence</span>` : ''}
                             </span>
                             <span class="time">${time}</span>
                         </div>
                         <div style="color: #94a3b8; font-size: 13px;">${inc.incident_type}: ${inc.description ? inc.description.substring(0, 120) : '—'}</div>
-                        ${diag ? renderDiagnosis(inc.id, diag) : '<div style="color: #64748b; font-size: 12px; margin-top: 8px;">Діагноз відсутній</div>'}
+                        ${diag ? renderDiagnosis(inc.id, diag) : '<div style="color: #64748b; font-size: 12px; margin-top: 8px;">No diagnosis yet</div>'}
                     </div>`;
             }
             list.innerHTML = html;
@@ -208,13 +200,13 @@
 
             return `
                 <div class="diagnosis-panel" id="diag-${id}">
-                    <h4>🧠 Діагноз</h4>
-                    <div class="root-cause"><strong>Причина:</strong> ${diag.root_cause || '—'}</div>
-                    ${chain ? `<div class="chain"><strong>Ланцюжок збою:</strong> ${chain}</div>` : ''}
+                    <h4>🧠 LLM Diagnosis</h4>
+                    <div class="root-cause"><strong>Root cause:</strong> ${diag.root_cause || '—'}</div>
+                    ${chain ? `<div class="chain"><strong>Fault chain:</strong> ${chain}</div>` : ''}
                     ${diag.fault_chain_explanation ? `<div class="chain" style="font-size:13px">${diag.fault_chain_explanation}</div>` : ''}
-                    ${diag.predicted_impact && diag.predicted_impact.length ? `<div class="chain"><strong>Прогноз впливу:</strong> ${diag.predicted_impact.join(', ')}</div>` : ''}
-                    <h4 style="margin-top: 12px;">📋 Рекомендації</h4>
-                    ${recs || '<div style="color: #64748b;">Немає</div>'}
+                    ${diag.predicted_impact && diag.predicted_impact.length ? `<div class="chain"><strong>Predicted impact:</strong> ${diag.predicted_impact.join(', ')}</div>` : ''}
+                    <h4 style="margin-top: 12px;">📋 Recommendations</h4>
+                    ${recs || '<div style="color: #64748b;">None</div>'}
                 </div>`;
         }
 
@@ -223,7 +215,6 @@
             if (el) el.classList.toggle('active');
         }
 
-        // ── Dependency graph (canvas) ──────────────────────────────────
         async function renderDepGraph() {
             const mapData = await fetchJSON('/api/service-map');
             const states = await fetchJSON('/api/services');
@@ -243,13 +234,9 @@
             services.forEach((name, i) => {
                 const col = i % cols;
                 const row = Math.floor(i / cols);
-                positions[name] = {
-                    x: cellW * (col + 1),
-                    y: cellH * (row + 1),
-                };
+                positions[name] = { x: cellW * (col + 1), y: cellH * (row + 1) };
             });
 
-            // Draw edges
             ctx.strokeStyle = '#334155';
             ctx.lineWidth = 1.5;
             for (const [name, cfg] of Object.entries(mapData.services)) {
@@ -259,8 +246,6 @@
                         ctx.moveTo(positions[dep].x, positions[dep].y);
                         ctx.lineTo(positions[name].x, positions[name].y);
                         ctx.stroke();
-
-                        // Arrow
                         const dx = positions[name].x - positions[dep].x;
                         const dy = positions[name].y - positions[dep].y;
                         const angle = Math.atan2(dy, dx);
@@ -276,16 +261,14 @@
                 }
             }
 
-            // Draw nodes
             for (const [name, pos] of Object.entries(positions)) {
                 const status = states && states[name] ? states[name].status : 'unknown';
                 const colors = {
                     healthy: '#22c55e', degraded: '#eab308', warning: '#eab308',
-                    down: '#ef4444', error: '#ef4444', timeout: '#ef4444', unknown: '#64748b',
-                    unhealthy: '#ef4444',
+                    down: '#ef4444', error: '#ef4444', timeout: '#ef4444',
+                    unknown: '#64748b', unhealthy: '#ef4444',
                 };
                 const color = colors[status] || '#64748b';
-
                 ctx.beginPath();
                 ctx.arc(pos.x, pos.y, 22, 0, Math.PI * 2);
                 ctx.fillStyle = color + '22';
@@ -293,13 +276,10 @@
                 ctx.strokeStyle = color;
                 ctx.lineWidth = 2;
                 ctx.stroke();
-
                 ctx.fillStyle = '#e2e8f0';
                 ctx.font = '11px Segoe UI, system-ui';
                 ctx.textAlign = 'center';
                 ctx.fillText(name, pos.x, pos.y + 36);
-
-                // Status icon
                 ctx.beginPath();
                 ctx.arc(pos.x, pos.y, 6, 0, Math.PI * 2);
                 ctx.fillStyle = color;
@@ -307,12 +287,10 @@
             }
         }
 
-        // ── Refresh all ────────────────────────────────────────────────
         async function refreshAll() {
             await Promise.all([renderServices(), renderIncidents(), renderDepGraph()]);
         }
 
-        // Initial load + auto-refresh every 15s
         refreshAll();
         setInterval(refreshAll, 15000);
     </script>
