@@ -21,7 +21,7 @@ from flask import Flask, jsonify, request
 
 # ── Config ──────────────────────────────────────────────────────────────────
 ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
-MODEL = os.environ.get("CLAUDE_MODEL", "claude-sonnet-4-20250514")
+MODEL = os.environ.get("CLAUDE_MODEL", "claude-sonnet-4-5")
 PORT = int(os.environ.get("PORT", "8090"))
 MAX_TOKENS = int(os.environ.get("MAX_TOKENS", "2048"))
 

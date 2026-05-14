@@ -22,7 +22,7 @@ services:
     description: "API gateway that fetches external data and publishes to queue"
 
   rabbitmq:
-    url: "http://10.0.1.13:15672"
+    url: "http://guest:guest@10.0.1.13:15672"
     health_endpoint: "/api/healthchecks/node"
     port: 5672
     management_port: 15672
@@ -35,8 +35,9 @@ services:
 
   history-consumer:
     url: "http://10.0.1.12:8081"
-    health_endpoint: "/health"
+    health_endpoint: null
     port: 8081
+    health_check_method: "tcp"
     depends_on:
       - rabbitmq
       - database
