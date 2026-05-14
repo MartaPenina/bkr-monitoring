@@ -1,0 +1,24 @@
+name: bkr-node02
+
+services:
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    restart: unless-stopped
+
+  proxy:
+    image: ghcr.io/martapenina/bkr-proxy:latest
+    environment:
+      RABBITMQ_URL: amqp://guest:guest@rabbitmq:5672/
+      PORT: "8080"
+      FETCH_INTERVAL: "30"
+    ports:
+      - "8080:8080"
+    depends_on:
+      - rabbitmq
+    restart: unless-stopped

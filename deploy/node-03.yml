@@ -1,0 +1,44 @@
+name: bkr-node03
+
+services:
+  ui:
+    image: ghcr.io/martapenina/bkr-ui:latest
+    environment:
+      PROXY_URL: http://10.0.1.13:8080
+      HISTORY_URL: http://10.0.1.12:8000
+      PORT: "80"
+    ports:
+      - "3000:80"
+    restart: unless-stopped
+
+  monitoring-collector:
+    image: ghcr.io/martapenina/bkr-monitoring-collector:latest
+    environment:
+      DATABASE_URL: postgresql://bkr:${DB_PASSWORD}@10.205.0.3/bkr
+      DIAGNOSTIC_ENGINE_URL: http://diagnostic-engine:8090
+      POLL_INTERVAL: "30"
+      PORT: "8085"
+    ports:
+      - "8085:8085"
+    restart: unless-stopped
+
+  diagnostic-engine:
+    image: ghcr.io/martapenina/bkr-diagnostic-engine:latest
+    environment:
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+      CLAUDE_MODEL: claude-sonnet-4-5
+      PORT: "8090"
+    ports:
+      - "8090:8090"
+    restart: unless-stopped
+
+  dashboard:
+    image: ghcr.io/martapenina/bkr-dashboard:latest
+    environment:
+      DATABASE_URL: postgresql://bkr:${DB_PASSWORD}@10.205.0.3/bkr
+      COLLECTOR_URL: http://monitoring-collector:8085
+      DIAGNOSTIC_URL: http://diagnostic-engine:8090
+      PORT: "5000"
+    ports:
+      - "5000:5000"
+    restart: unless-stopped

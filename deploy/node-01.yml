@@ -1,0 +1,19 @@
+name: bkr-node01
+
+services:
+  history-consumer:
+    image: ghcr.io/martapenina/bkr-history-consumer:latest
+    environment:
+      DATABASE_URL: postgresql://bkr:${DB_PASSWORD}@10.205.0.3/bkr
+      RABBITMQ_URL: amqp://guest:${RABBITMQ_PASSWORD}@10.0.1.13:5672/
+      PORT: "8081"
+    restart: unless-stopped
+
+  history-api:
+    image: ghcr.io/martapenina/bkr-history-api:latest
+    environment:
+      DATABASE_URL: postgresql://bkr:${DB_PASSWORD}@10.205.0.3/bkr
+      PORT: "8000"
+    ports:
+      - "8000:8000"
+    restart: unless-stopped
