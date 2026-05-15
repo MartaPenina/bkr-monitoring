@@ -118,51 +118,46 @@ def build_prompt(context: dict) -> str:
 
 # ── Claude API call ─────────────────────────────────────────────────────────
 def call_claude_api(prompt: str) -> dict:
-    """Send structured prompt to Claude API and parse JSON response."""
+    """Send structured prompt to OpenRouter/Claude API and parse JSON response."""
     global _diagnosis_count
-
     if not ANTHROPIC_API_KEY:
         log_json("warning", "No ANTHROPIC_API_KEY set, using fallback")
         return None
-
     try:
-        client = anthropic.Anthropic(
-            api_key=ANTHROPIC_API_KEY,
-            base_url="https://openrouter.ai/api/v1",
+        import requests as req
+        response = req.post(
+            "https://openrouter.ai/api/v1/chat/completions",
+            headers={
+                "Authorization": f"Bearer {ANTHROPIC_API_KEY}",
+                "Content-Type": "application/json",
+                "HTTP-Referer": "https://github.com/MartaPenina/bkr-monitoring",
+            },
+            json={
+                "model": MODEL,
+                "max_tokens": MAX_TOKENS,
+                "messages": [{"role": "user", "content": prompt}],
+            },
+            timeout=60,
         )
-        message = client.messages.create(
-            model=MODEL,
-            max_tokens=MAX_TOKENS,
-            messages=[{"role": "user", "content": prompt}],
-        )
-
-        response_text = message.content[0].text
+        response.raise_for_status()
+        response_text = response.json()["choices"][0]["message"]["content"]
         _diagnosis_count += 1
-
-        # Parse JSON from response
-        # Claude might wrap it in ```json ... ```
         text = response_text.strip()
         if text.startswith("```"):
             text = text.split("\n", 1)[1]
             if text.endswith("```"):
                 text = text[:-3]
             text = text.strip()
-
         diagnosis = json.loads(text)
         diagnosis["diagnosis_source"] = "claude_api"
         diagnosis["model"] = MODEL
         diagnosis["diagnosed_at"] = datetime.now(timezone.utc).isoformat()
         return diagnosis
-
     except json.JSONDecodeError as e:
-        log_json("error", "Failed to parse Claude response as JSON", error=str(e),
-                 raw_response=response_text[:500])
-        return None
-    except anthropic.APIError as e:
-        log_json("error", "Claude API error", error=str(e))
+        log_json("error", "Failed to parse response as JSON", error=str(e))
         return None
     except Exception as e:
-        log_json("error", "Unexpected error calling Claude API", error=str(e))
+        log_json("error", "Claude API error", error=str(e))
         return None
 
 
