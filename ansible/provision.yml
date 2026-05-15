@@ -1,0 +1,71 @@
+---
+# provision.yml — install system packages on all VMs.
+# Run once (or re-run: idempotent).
+#
+#   source .env
+#   ansible-playbook -i ansible/inventory ansible/provision.yml
+
+- name: Validate required environment variables
+  hosts: localhost
+  connection: local
+  tasks:
+    - name: Check .env vars are exported
+      assert:
+        that:
+          - lookup('env', 'RABBITMQ_PASSWORD') != ''
+          - lookup('env', 'DB_PASSWORD') != ''
+          - lookup('env', 'SSH_KEY_PATH') != ''
+          - lookup('env', 'RUNTIME_BACKEND') in ['', 'external', 'postgres']
+        fail_msg: |
+          Required environment variables are not set or RUNTIME_BACKEND is invalid.
+          Run:  source .env
+          RUNTIME_BACKEND may be empty and will default to external.
+          Supported explicit runtime backends: external, postgres.
+          Then retry: ansible-playbook -i ansible/inventory ansible/provision.yml
+
+- name: Common setup — all nodes
+  hosts: all
+  become: yes
+  roles:
+    - common
+    - docker
+
+- name: Provision history node — Data directories
+  hosts: history
+  become: yes
+  tasks:
+    - name: Create PostgreSQL data directory
+      file:
+        path: /var/lib/coin-ops/postgres
+        state: directory
+        owner: 70
+        group: 70
+        mode: '0700'
+
+    - name: Create RabbitMQ data directory
+      file:
+        path: /var/lib/coin-ops/rabbitmq
+        state: directory
+        owner: 999
+        group: 999
+        mode: '0755'
+
+- name: Provision proxy node — Data directories
+  hosts: proxy
+  become: yes
+  tasks:
+    - name: Create Redis data directory
+      file:
+        path: /var/lib/coin-ops/redis
+        state: directory
+        owner: 999
+        group: 999
+        mode: '0755'
+
+- name: Provision UI node
+  hosts: ui
+  become: yes
+  tasks:
+    - name: No host-level provisioning required for UI node
+      debug:
+        msg: "UI node only needs Docker."

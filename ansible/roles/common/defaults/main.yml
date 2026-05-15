@@ -1,0 +1,6 @@
+---
+# Ports to open in UFW. Each service role overrides this
+# via host_vars or group_vars. SSH (22) is always included.
+---
+common_allowed_ports:
+  - 9922

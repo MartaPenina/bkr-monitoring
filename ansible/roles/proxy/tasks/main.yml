@@ -1,0 +1,74 @@
+---
+- name: Stop and disable legacy host services
+  service:
+    name: "{{ item }}"
+    state: stopped
+    enabled: no
+  loop:
+    - redis-server
+    - cognitor-proxy
+  failed_when: false
+
+- name: Create secrets directory
+  file:
+    path: /etc/cognitor
+    state: directory
+    owner: root
+    group: root
+    mode: '0750'
+
+- name: Write proxy environment file
+  template:
+    src: proxy.env.j2
+    dest: /etc/cognitor/proxy.env
+    owner: root
+    group: root
+    mode: '0640'
+
+- name: Create proxy deploy directory
+  file:
+    path: /opt/cognitor/proxy
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+
+- name: Remove legacy synced proxy source or binary
+  file:
+    path: /opt/cognitor/proxy/proxy
+    state: absent
+
+- name: Render compose file
+  template:
+    src: "{{ playbook_dir }}/../deploy/compose/node-02.compose.yaml"
+    dest: /opt/cognitor/proxy/compose.yaml
+
+- name: Validate proxy compose configuration
+  command: docker compose -f /opt/cognitor/proxy/compose.yaml config -q
+  args:
+    chdir: /opt/cognitor/proxy
+  changed_when: false
+
+- name: Pull proxy container images
+  command: docker compose -f /opt/cognitor/proxy/compose.yaml pull
+  args:
+    chdir: /opt/cognitor/proxy
+
+- name: Run Docker Compose
+  command: docker compose -f /opt/cognitor/proxy/compose.yaml up -d --remove-orphans
+  args:
+    chdir: /opt/cognitor/proxy
+
+- name: Wait for proxy health endpoint
+  uri:
+    url: "http://localhost:{{ proxy_port }}/health"
+    method: GET
+    status_code: 200
+  retries: 12
+  delay: 5
+  register: result
+  until: result.status == 200
+
+- name: Remove dangling Docker images
+  command: docker image prune -f
+  changed_when: false

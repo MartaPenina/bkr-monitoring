@@ -1,0 +1,156 @@
+---
+- name: Stop and disable legacy host nginx
+  service:
+    name: nginx
+    state: stopped
+    enabled: no
+  failed_when: false
+
+- name: Validate TLS mode
+  assert:
+    that:
+      - tls_mode in ['selfsigned', 'provided', 'off']
+    fail_msg: "TLS_MODE must be one of: selfsigned, provided, off."
+
+- name: Create secrets directory
+  file:
+    path: /etc/cognitor
+    state: directory
+    owner: root
+    group: root
+    mode: '0750'
+
+- name: Create TLS certificate directory
+  file:
+    path: "{{ tls_cert_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: '0750'
+
+- name: Install local TLS tooling
+  apt:
+    name: openssl
+    state: present
+    update_cache: yes
+  when: tls_mode == 'selfsigned'
+
+- name: Inspect existing self-signed certificate SAN
+  command: "openssl x509 -in {{ tls_cert_path }} -noout -ext subjectAltName"
+  register: selfsigned_cert_san
+  changed_when: false
+  failed_when: false
+  when: tls_mode == 'selfsigned'
+
+- name: Remove stale self-signed certificate after domain change
+  file:
+    path: "{{ item }}"
+    state: absent
+  loop:
+    - "{{ tls_cert_path }}"
+    - "{{ tls_key_path }}"
+  when:
+    - tls_mode == 'selfsigned'
+    - selfsigned_cert_san.rc == 0
+    - ("DNS:" ~ app_domain) not in selfsigned_cert_san.stdout
+
+- name: Generate self-signed gateway certificate
+  command:
+    cmd: >-
+      openssl req -x509 -nodes -newkey rsa:2048
+      -keyout {{ tls_key_path }}
+      -out {{ tls_cert_path }}
+      -days 365
+      -subj /CN={{ app_domain }}
+      -addext subjectAltName=DNS:{{ app_domain }}
+    creates: "{{ tls_cert_path }}"
+  when: tls_mode == 'selfsigned'
+
+- name: Restrict self-signed gateway private key
+  file:
+    path: "{{ tls_key_path }}"
+    owner: root
+    group: root
+    mode: '0600'
+  when: tls_mode == 'selfsigned'
+
+- name: Check provided TLS certificate
+  stat:
+    path: "{{ tls_cert_path }}"
+  register: provided_tls_cert
+  when: tls_mode == 'provided'
+
+- name: Check provided TLS private key
+  stat:
+    path: "{{ tls_key_path }}"
+  register: provided_tls_key
+  when: tls_mode == 'provided'
+
+- name: Validate provided TLS files
+  assert:
+    that:
+      - provided_tls_cert.stat.exists
+      - provided_tls_key.stat.exists
+    fail_msg: "TLS_MODE=provided requires {{ tls_cert_path }} and {{ tls_key_path }} on the UI node."
+  when: tls_mode == 'provided'
+
+- name: Write ui runtime environment file
+  copy:
+    content: |
+      PROXY_URL=/api
+      HISTORY_URL=/history-api
+    dest: /etc/cognitor/ui.env
+    owner: root
+    group: root
+    mode: '0640'
+
+- name: Create ui deploy directory
+  file:
+    path: /opt/cognitor/ui
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+
+- name: Remove legacy synced ui source
+  file:
+    path: /opt/cognitor/ui/ui-react
+    state: absent
+
+- name: Render nginx gateway config
+  template:
+    src: nginx.gateway.conf.j2
+    dest: /opt/cognitor/ui/nginx.conf
+    owner: root
+    group: root
+    mode: '0644'
+
+- name: Render compose file
+  template:
+    src: "{{ playbook_dir }}/../deploy/compose/node-03.compose.yaml"
+    dest: /opt/cognitor/ui/compose.yaml
+
+- name: Pull ui container images
+  command: docker compose -f /opt/cognitor/ui/compose.yaml pull
+  args:
+    chdir: /opt/cognitor/ui
+
+- name: Run Docker Compose
+  command: docker compose -f /opt/cognitor/ui/compose.yaml up -d --remove-orphans
+  args:
+    chdir: /opt/cognitor/ui
+
+- name: Wait for nginx availability
+  uri:
+    url: "{{ 'https://localhost/health' if tls_enabled | bool else 'http://localhost:80/health' }}"
+    method: GET
+    status_code: 200
+    validate_certs: no
+  retries: 12
+  delay: 5
+  register: result
+  until: result.status == 200
+
+- name: Remove dangling Docker images
+  command: docker image prune -f
+  changed_when: false

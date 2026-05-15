@@ -1,0 +1,48 @@
+# ── SSH ───────────────────────────────────────────────────────
+# SSH settings now in inventory [all:vars]
+
+# ── Passwords (loaded from .env) ──────────────────────────────
+rabbitmq_password: "{{ lookup('env', 'RABBITMQ_PASSWORD') }}"
+db_password: "{{ lookup('env', 'DB_PASSWORD') }}"
+
+# ── Service accounts ──────────────────────────────────────────
+rabbitmq_user: cognitor
+db_name: cognitor
+db_user: cognitor
+runtime_backend: "{{ lookup('env', 'RUNTIME_BACKEND') | default('external', true) }}"
+use_rds: true
+
+# ── Ports ────────────────────────────────────────────────────
+proxy_port: 8080
+history_port: 8000
+
+# ── RDS endpoint ─────────────────────────────────────────────
+rds_endpoint: "coinops-db.cj8kme8e0kqa.eu-central-1.rds.amazonaws.com"
+
+# Public entrypoint / TLS
+app_domain: "{{ lookup('env', 'APP_DOMAIN') | default('coinops-penina.pp.ua', true) }}"
+tls_mode: "{{ lookup('env', 'TLS_MODE') | default('selfsigned', true) }}"
+tls_enabled: "{{ tls_mode != 'off' }}"
+tls_cert_dir: /etc/cognitor/tls
+tls_cert_path: "{{ tls_cert_dir }}/coinops.crt"
+tls_key_path: "{{ tls_cert_dir }}/coinops.key"
+
+# ── Container images ─────────────────────────────────────────
+image_registry: "{{ lookup('env', 'IMAGE_REGISTRY') | default('ghcr.io/ua-academy-projects', true) }}"
+image_registry_host: "{{ image_registry.split('/')[0] }}"
+image_tag: "{{ lookup('env', 'IMAGE_TAG') | default('shabat-latest', true) }}"
+proxy_image: "{{ image_registry }}/coin-ops-proxy:{{ image_tag }}"
+history_api_image: "{{ image_registry }}/coin-ops-history-api:{{ image_tag }}"
+history_consumer_image: "{{ image_registry }}/coin-ops-history-consumer:{{ image_tag }}"
+ui_image: "{{ image_registry }}/coin-ops-ui:{{ image_tag }}"
+postgres_runtime_image: "{{ image_registry }}/coin-ops-postgres-runtime:{{ image_tag }}"
+postgres_image: "{{ postgres_runtime_image if runtime_backend == 'postgres' else 'postgres:16-alpine' }}"
+registry_username: "{{ lookup('env', 'GHCR_USERNAME') | default('', true) }}"
+registry_token: "{{ lookup('env', 'GHCR_TOKEN') | default('', true) }}"
+
+# ── Derived connection strings ────────────────────────────────
+rabbitmq_url: "amqp://{{ rabbitmq_user }}:{{ rabbitmq_password }}@{{ hostvars[groups['history'][0]].ansible_host }}:5672/"
+database_url: "postgresql://{{ db_user }}:{{ db_password }}@{{ rds_endpoint }}:5432/{{ db_name }}"
+history_database_url: "postgresql://{{ db_user }}:{{ db_password }}@{{ rds_endpoint }}:5432/{{ db_name }}"
+proxy_database_url: "postgresql://{{ db_user }}:{{ db_password }}@{{ rds_endpoint }}:5432/{{ db_name }}"
+redis_url: "redis://127.0.0.1:6379/0"

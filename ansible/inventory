@@ -1,0 +1,22 @@
+[jump]
+jump-host ansible_host=34.118.111.49
+
+[node01]
+node-01 ansible_host=10.0.1.12
+
+[node02]
+node-02 ansible_host=10.0.1.13
+
+[node03]
+node-03 ansible_host=10.0.1.11
+
+[internal:children]
+node01
+node02
+node03
+
+[all:vars]
+ansible_user=bkr_ops
+ansible_port=9922
+ansible_ssh_private_key_file=~/.ssh/id_ed25519
+ansible_ssh_common_args=-o ProxyJump=bkr_ops@34.118.111.49:9922 -o StrictHostKeyChecking=no

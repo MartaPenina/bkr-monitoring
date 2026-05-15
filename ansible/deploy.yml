@@ -1,0 +1,62 @@
+---
+# deploy.yml — deploy all services.
+# Safe to re-run on every code push.
+#
+#   source .env
+#   ansible-playbook -i ansible/inventory ansible/deploy.yml
+
+- name: Validate required environment variables
+  hosts: localhost
+  connection: local
+  tasks:
+    - name: Check .env vars are exported
+      assert:
+        that:
+          - lookup('env', 'RABBITMQ_PASSWORD') != ''
+          - lookup('env', 'DB_PASSWORD') != ''
+          - lookup('env', 'SSH_KEY_PATH') != ''
+          - lookup('env', 'RUNTIME_BACKEND') in ['', 'external', 'postgres']
+        fail_msg: |
+          Required environment variables are not set or RUNTIME_BACKEND is invalid.
+          Run:  source .env
+          RUNTIME_BACKEND may be empty and will default to external.
+          Supported explicit runtime backends: external, postgres.
+          Then retry: ansible-playbook -i ansible/inventory ansible/deploy.yml
+
+- name: Authenticate Docker registry on target nodes
+  hosts: all
+  become: yes
+  tasks:
+    - name: Log in to configured container registry
+      community.docker.docker_login:
+        registry_url: "{{ image_registry_host }}"
+        username: "{{ registry_username }}"
+        password: "{{ registry_token }}"
+        reauthorize: true
+      no_log: true
+      when:
+        - registry_username | length > 0
+        - registry_token | length > 0
+
+    - name: Explain skipped registry login
+      debug:
+        msg: "GHCR_USERNAME/GHCR_TOKEN not set; assuming registry images are public."
+      when: registry_username | length == 0 or registry_token | length == 0
+
+- name: Deploy History Service (node-01)
+  hosts: history
+  become: yes
+  roles:
+    - history
+
+- name: Deploy Proxy Service (node-02)
+  hosts: proxy
+  become: yes
+  roles:
+    - proxy
+
+- name: Deploy Web UI (node-03)
+  hosts: ui
+  become: yes
+  roles:
+    - ui
