@@ -126,7 +126,10 @@ def call_claude_api(prompt: str) -> dict:
         return None
 
     try:
-        client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
+        client = anthropic.Anthropic(
+            api_key=ANTHROPIC_API_KEY,
+            base_url="https://openrouter.ai/api/v1",
+        )
         message = client.messages.create(
             model=MODEL,
             max_tokens=MAX_TOKENS,

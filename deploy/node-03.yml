@@ -26,10 +26,10 @@ services:
     image: ghcr.io/martapenina/bkr-diagnostic-engine:latest
     environment:
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
-      CLAUDE_MODEL: claude-sonnet-4-5
+      CLAUDE_MODEL: anthropic/claude-3-haiku
       PORT: "8090"
       MIN_DIAGNOSIS_INTERVAL: "300" 
-      MAX_TOKENS: "1024"
+      MAX_TOKENS: "512"
     ports:
       - "8090:8090"
     restart: unless-stopped
