@@ -764,32 +764,38 @@ function renderIncidentList(id, limit, grouped) {
 function renderDiag(uid, diag) {
   const isLLM = diag.diagnosis_source === 'claude_api';
   const chain = (diag.fault_chain || []).map((n, i) =>
-    `${i===0 ? `<span class="chain-node root">${n}</span>` : `<span class="chain-node">${n}</span>`}${i < (diag.fault_chain.length-1) ? '<span class="chain-arrow">→</span>' : ''}`
+    (i===0 ? '<span class="chain-node root">'+n+'</span>' : '<span class="chain-node">'+n+'</span>') +
+    (i < (diag.fault_chain.length-1) ? '<span class="chain-arrow">→</span>' : '')
   ).join('');
   const recs = (diag.recommendations || []).slice(0, 3).map(r => {
     const pc = r.priority === 'immediate' ? 'pri-immediate' : r.priority === 'short-term' ? 'pri-short-term' : 'pri-long-term';
-    return `<div class="rec-item"><div class="rec-header"><div class="rec-priority ${pc}"></div><span class="rec-action">${r.action||''}</span></div>${r.command ? `<div class="rec-cmd">${r.command}</div>` : ''}</div>`;
+    return '<div class="rec-item"><div class="rec-header"><div class="rec-priority '+pc+'"></div><span class="rec-action">'+(r.action||'')+'</span></div>'+(r.command ? '<div class="rec-cmd">'+r.command+'</div>' : '')+'</div>';
   }).join('');
-  return `<div class="diag-panel" id="diag-${uid}">
-    <div class="diag-title">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-      ${isLLM ? 'Claude AI Diagnosis' : 'Heuristic Diagnosis'}
-    </div>
-    ${diag.root_cause ? `<div class="diag-row"><div class="diag-row-label">Root Cause</div><div class="diag-row-value">${diag.root_cause}</div></div>` : ''}
-    ${chain ? `<div class="diag-row"><div class="diag-row-label">Fault Chain</div><div class="fault-chain">${chain}</div></div>` : ''}
-    ${diag.fault_chain_explanation ? `<div class="diag-row"><div class="diag-row-label">Explanation</div><div class="diag-row-value" style="font-size:12px;color:var(--muted)">${diag.fault_chain_explanation}</div></div>` : ''}
-    ${diag.predicted_impact?.length ? `<div class="diag-row"><div class="diag-row-label">Predicted Impact</div><div class="diag-row-value">${diag.predicted_impact.join(', ')}</div></div>` : ''}
-    ${diag.failure_prediction ? `
-    <div class="diag-row" style="background:rgba(239,68,68,0.05);border:1px solid rgba(239,68,68,0.15);border-radius:8px;padding:10px 12px;margin-top:4px">
-      <div class="diag-row-label" style="color:var(--no)">⚡ Failure Prediction</div>
-      ${diag.failure_prediction.next_failures?.length ? `<div class="diag-row-value" style="margin-bottom:4px"><strong>Next failures:</strong> ${diag.failure_prediction.next_failures.join(', ')}</div>` : ''}
-      ${diag.failure_prediction.time_estimate ? `<div class="diag-row-value" style="margin-bottom:4px"><strong>Time estimate:</strong> ${diag.failure_prediction.time_estimate}</div>` : ''}
-      ${diag.failure_prediction.prediction_reasoning ? `<div class="diag-row-value" style="font-size:12px;color:var(--muted)">${diag.failure_prediction.prediction_reasoning}</div>` : ''}
-      ${diag.failure_prediction.cascade_risk ? `<div style="margin-top:6px"><span class="badge badge-${diag.failure_prediction.cascade_risk==='critical'?'red':diag.failure_prediction.cascade_risk==='high'?'red':'yellow'}">cascade risk: ${diag.failure_prediction.cascade_risk}</span></div>` : ''}
-    </div>` : ''}
-    ${diag.prevention ? `<div class="diag-row"><div class="diag-row-label">Prevention</div><div class="diag-row-value" style="font-size:12px;color:var(--muted)">${diag.prevention}</div></div>` : ''}
-    ${recs ? `<div class="diag-row"><div class="diag-row-label">Recommendations</div><div class="recs">${recs}</div></div>` : ''}
-  </div>`;
+
+  let fp = '';
+  if (diag.failure_prediction) {
+    const fp_data = diag.failure_prediction;
+    const riskClass = (fp_data.cascade_risk==='critical'||fp_data.cascade_risk==='high') ? 'badge-red' : 'badge-yellow';
+    fp = '<div class="diag-row" style="background:rgba(239,68,68,0.05);border:1px solid rgba(239,68,68,0.15);border-radius:8px;padding:10px 12px;margin-top:4px">'
+      + '<div class="diag-row-label" style="color:var(--no)">⚡ Failure Prediction</div>'
+      + (fp_data.next_failures && fp_data.next_failures.length ? '<div class="diag-row-value" style="margin-bottom:4px"><strong>Next failures:</strong> '+fp_data.next_failures.join(', ')+'</div>' : '')
+      + (fp_data.time_estimate ? '<div class="diag-row-value" style="margin-bottom:4px"><strong>Time estimate:</strong> '+fp_data.time_estimate+'</div>' : '')
+      + (fp_data.prediction_reasoning ? '<div class="diag-row-value" style="font-size:12px;color:var(--muted)">'+fp_data.prediction_reasoning+'</div>' : '')
+      + (fp_data.cascade_risk ? '<div style="margin-top:6px"><span class="badge '+riskClass+'">cascade risk: '+fp_data.cascade_risk+'</span></div>' : '')
+      + '</div>';
+  }
+
+  return '<div class="diag-panel" id="diag-'+uid+'">'
+    + '<div class="diag-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg> '+(isLLM ? 'Claude AI Diagnosis' : 'Heuristic Diagnosis')+'</div>'
+    + (diag.root_cause ? '<div class="diag-row"><div class="diag-row-label">Root Cause</div><div class="diag-row-value">'+diag.root_cause+'</div></div>' : '')
+    + (chain ? '<div class="diag-row"><div class="diag-row-label">Fault Chain</div><div class="fault-chain">'+chain+'</div></div>' : '')
+    + (diag.fault_chain_explanation ? '<div class="diag-row"><div class="diag-row-label">Explanation</div><div class="diag-row-value" style="font-size:12px;color:var(--muted)">'+diag.fault_chain_explanation+'</div></div>' : '')
+    + (diag.predicted_impact && diag.predicted_impact.length ? '<div class="diag-row"><div class="diag-row-label">Predicted Impact</div><div class="diag-row-value">'+diag.predicted_impact.join(', ')+'</div></div>' : '')
+    + fp
+    + (diag.prevention ? '<div class="diag-row"><div class="diag-row-label">Prevention</div><div class="diag-row-value" style="font-size:12px;color:var(--muted)">'+diag.prevention+'</div></div>' : '')
+    + (recs ? '<div class="diag-row"><div class="diag-row-label">Recommendations</div><div class="recs">'+recs+'</div></div>' : '')
+    + '</div>';
+}
  
 function toggleDiag(listId, idx) {
   const el = document.getElementById(`diag-${listId}-${idx}`);
