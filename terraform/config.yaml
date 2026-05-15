@@ -64,3 +64,8 @@ vms:
     zone: secondary
     tags: ["internal", "monitoring", "dashboard", "diagnostic"]
     public_ip: true
+  node-04:
+    size: small
+    zone: primary
+    tags: ["internal", "automation"]
+    public_ip: true
