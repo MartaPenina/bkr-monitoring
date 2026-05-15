@@ -3,11 +3,12 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>BKR Monitoring & Diagnostics</title>
+  <title>BKR Monitoring &amp; Diagnostics</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
   <style>
     *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
-
+ 
     :root {
       --bg: #09090b;
       --surface: #121215;
@@ -22,7 +23,7 @@
       --font: 'Inter', system-ui, sans-serif;
       --mono: 'JetBrains Mono', monospace;
     }
-
+ 
     body {
       font-family: var(--font);
       background: var(--bg);
@@ -32,95 +33,77 @@
       overflow: hidden;
       position: relative;
     }
-
+ 
     body::before {
       content: '';
-      position: fixed;
-      inset: 0;
-      z-index: 0;
+      position: fixed; inset: 0; z-index: 0;
       background:
         radial-gradient(circle at 0% 0%, rgba(99,102,241,0.12) 0%, transparent 50%),
         radial-gradient(circle at 100% 100%, rgba(168,85,247,0.10) 0%, transparent 50%);
       pointer-events: none;
     }
-
+ 
     /* ── Sidebar ── */
     .sidebar {
-      width: 240px;
-      flex-shrink: 0;
+      width: 240px; flex-shrink: 0;
       background: rgba(0,0,0,0.3);
       backdrop-filter: blur(24px);
       border-right: 1px solid var(--border);
-      display: flex;
-      flex-direction: column;
-      z-index: 10;
+      display: flex; flex-direction: column; z-index: 10;
     }
-
     .sidebar-logo {
       padding: 24px 20px 16px;
-      display: flex;
-      align-items: center;
-      gap: 10px;
+      display: flex; align-items: center; gap: 10px;
       border-bottom: 1px solid var(--border);
     }
-
     .logo-icon {
       width: 32px; height: 32px;
-      background: var(--accent);
-      border-radius: 8px;
+      background: var(--accent); border-radius: 8px;
       display: flex; align-items: center; justify-content: center;
-      box-shadow: 0 0 20px rgba(99,102,241,0.4);
-      font-size: 16px;
+      box-shadow: 0 0 20px rgba(99,102,241,0.4); font-size: 16px;
     }
-
     .logo-text {
       font-size: 15px; font-weight: 700;
       background: linear-gradient(to right, #fff, rgba(255,255,255,0.6));
       -webkit-background-clip: text; -webkit-text-fill-color: transparent;
       letter-spacing: -0.3px;
     }
-
     .sidebar-nav { flex: 1; padding: 12px 12px; display: flex; flex-direction: column; gap: 2px; }
-
     .nav-item {
       display: flex; align-items: center; gap: 10px;
       padding: 10px 12px; border-radius: 10px;
       font-size: 13px; font-weight: 500;
       color: var(--muted); cursor: pointer;
       border: none; background: transparent; width: 100%; text-align: left;
-      transition: all 0.15s;
+      transition: all 0.15s; position: relative;
     }
     .nav-item:hover { background: rgba(255,255,255,0.04); color: var(--text); }
     .nav-item.active { background: var(--accent); color: #fff; box-shadow: 0 4px 16px rgba(99,102,241,0.3); }
     .nav-item svg { width: 16px; height: 16px; flex-shrink: 0; }
-
-    .sidebar-footer {
-      padding: 12px;
-      border-top: 1px solid var(--border);
+    .nav-badge-count {
+      margin-left: auto;
+      background: rgba(239,68,68,0.2); color: var(--no);
+      border-radius: 20px; padding: 1px 6px;
+      font-size: 10px; font-weight: 700;
     }
-
+    .sidebar-footer { padding: 12px; border-top: 1px solid var(--border); }
     .status-card {
       background: rgba(255,255,255,0.03);
       border: 1px solid rgba(255,255,255,0.08);
-      border-radius: 10px;
-      padding: 12px;
+      border-radius: 10px; padding: 12px;
     }
-
     .status-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
+    .status-row:last-child { margin-bottom: 0; }
     .status-label { font-size: 11px; color: var(--muted); }
     .status-dot { width: 6px; height: 6px; border-radius: 50%; }
     .dot-green { background: var(--yes); box-shadow: 0 0 8px rgba(34,197,94,0.6); animation: pulse 2s infinite; }
-    .dot-red { background: var(--no); box-shadow: 0 0 8px rgba(239,68,68,0.5); }
-    .dot-yellow { background: var(--warn); box-shadow: 0 0 8px rgba(234,179,8,0.5); animation: pulse 2s infinite; }
-    .status-text-green { font-size: 11px; color: var(--yes); font-weight: 600; }
-    .status-text-red { font-size: 11px; color: var(--no); font-weight: 600; }
-    .status-sub { font-size: 10px; color: var(--muted); line-height: 1.4; }
-
-    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.5} }
-
+    .dot-red   { background: var(--no);  box-shadow: 0 0 8px rgba(239,68,68,0.5); }
+    .dot-gray  { background: var(--muted); }
+ 
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+ 
     /* ── Main ── */
     .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; z-index: 5; }
-
     .topbar {
       height: 56px; flex-shrink: 0;
       border-bottom: 1px solid var(--border);
@@ -128,110 +111,86 @@
       display: flex; align-items: center; justify-content: space-between;
       padding: 0 24px; gap: 16px;
     }
-
-    .topbar-title { font-size: 14px; font-weight: 600; color: var(--text); }
+    .topbar-title { font-size: 14px; font-weight: 600; }
     .topbar-sub { font-size: 11px; color: var(--muted); margin-top: 1px; }
-
     .topbar-actions { display: flex; align-items: center; gap: 8px; }
-
     .btn {
       display: flex; align-items: center; gap: 6px;
       padding: 7px 14px; border-radius: 8px;
       font-size: 12px; font-weight: 600; cursor: pointer;
       border: none; transition: all 0.15s;
     }
-    .btn-primary { background: var(--accent); color: #fff; box-shadow: 0 2px 12px rgba(99,102,241,0.3); }
-    .btn-primary:hover { background: #4f52d9; }
     .btn-ghost { background: rgba(255,255,255,0.05); color: var(--muted); border: 1px solid var(--border); }
     .btn-ghost:hover { background: rgba(255,255,255,0.08); color: var(--text); }
-
     .badge {
       padding: 3px 10px; border-radius: 20px;
       font-size: 10px; font-weight: 700; letter-spacing: 0.3px;
     }
-    .badge-green { background: rgba(34,197,94,0.15); color: var(--yes); border: 1px solid rgba(34,197,94,0.2); }
-    .badge-red { background: rgba(239,68,68,0.15); color: var(--no); border: 1px solid rgba(239,68,68,0.2); }
-    .badge-yellow { background: rgba(234,179,8,0.15); color: var(--warn); border: 1px solid rgba(234,179,8,0.2); }
-    .badge-accent { background: rgba(99,102,241,0.15); color: #818cf8; border: 1px solid rgba(99,102,241,0.2); }
-    .badge-gray { background: rgba(255,255,255,0.06); color: var(--muted); border: 1px solid var(--border); }
-
+    .badge-green  { background: rgba(34,197,94,0.15);  color: var(--yes); border: 1px solid rgba(34,197,94,0.2); }
+    .badge-red    { background: rgba(239,68,68,0.15);  color: var(--no);  border: 1px solid rgba(239,68,68,0.2); }
+    .badge-yellow { background: rgba(234,179,8,0.15);  color: var(--warn);border: 1px solid rgba(234,179,8,0.2); }
+    .badge-accent { background: rgba(99,102,241,0.15); color: #818cf8;    border: 1px solid rgba(99,102,241,0.2); }
+    .badge-gray   { background: rgba(255,255,255,0.06);color: var(--muted);border: 1px solid var(--border); }
+ 
     /* ── Content ── */
     .content { flex: 1; overflow-y: auto; padding: 24px; }
     .content::-webkit-scrollbar { width: 4px; }
     .content::-webkit-scrollbar-thumb { background: #3f3f46; border-radius: 4px; }
-
-    /* ── Panels ── */
     .panel { display: none; }
     .panel.active { display: block; }
-
-    /* ── Stats Grid ── */
+ 
+    /* ── Stats ── */
     .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 24px; }
-
     .stat-card {
       background: rgba(255,255,255,0.03);
       border: 1px solid rgba(255,255,255,0.08);
-      border-radius: 14px; padding: 18px 20px;
-      transition: border-color 0.2s;
+      border-radius: 14px; padding: 18px 20px; transition: border-color 0.2s;
     }
     .stat-card:hover { border-color: rgba(255,255,255,0.12); }
     .stat-label { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 8px; }
     .stat-value { font-size: 28px; font-weight: 700; line-height: 1; }
-    .stat-value.green { color: var(--yes); }
-    .stat-value.red { color: var(--no); }
+    .stat-value.green  { color: var(--yes); }
+    .stat-value.red    { color: var(--no); }
     .stat-value.accent { color: #818cf8; }
     .stat-sub { font-size: 11px; color: var(--muted); margin-top: 4px; }
-
+ 
     /* ── Section ── */
     .section { margin-bottom: 24px; }
     .section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
-    .section-title { font-size: 13px; font-weight: 600; display: flex; align-items: center; gap: 7px; color: var(--text); }
+    .section-title { font-size: 13px; font-weight: 600; display: flex; align-items: center; gap: 7px; }
     .section-title svg { width: 14px; height: 14px; color: var(--accent); }
-
-    /* ── Service Grid ── */
+ 
+    /* ── Service cards ── */
     .service-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
-
     .service-card {
       background: rgba(255,255,255,0.025);
       border: 1px solid rgba(255,255,255,0.07);
       border-radius: 12px; padding: 16px;
-      transition: all 0.2s;
-      position: relative; overflow: hidden;
+      transition: all 0.2s; position: relative;
     }
     .service-card:hover { border-color: rgba(255,255,255,0.12); background: rgba(255,255,255,0.04); }
-    .service-card.healthy { border-left: 2px solid var(--yes); }
-    .service-card.down { border-left: 2px solid var(--no); }
-    .service-card.unhealthy { border-left: 2px solid var(--warn); }
-
+    .service-card.healthy   { border-left: 2px solid var(--yes); }
+    .service-card.down      { border-left: 2px solid var(--no); }
+    .service-card.unhealthy, .service-card.warning { border-left: 2px solid var(--warn); }
     .svc-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
     .svc-name-row { display: flex; align-items: center; gap: 8px; }
     .svc-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
-    .svc-dot.healthy { background: var(--yes); box-shadow: 0 0 6px rgba(34,197,94,0.5); }
+    .svc-dot.healthy  { background: var(--yes); box-shadow: 0 0 6px rgba(34,197,94,0.5); animation: pulse 2s infinite; }
     .svc-dot.down, .svc-dot.error, .svc-dot.timeout { background: var(--no); box-shadow: 0 0 6px rgba(239,68,68,0.5); }
-    .svc-dot.unhealthy { background: var(--warn); box-shadow: 0 0 6px rgba(234,179,8,0.5); }
-    .svc-dot.unknown { background: var(--muted); }
+    .svc-dot.unhealthy, .svc-dot.warning { background: var(--warn); box-shadow: 0 0 6px rgba(234,179,8,0.5); }
+    .svc-dot.unknown  { background: var(--muted); }
     .svc-name { font-size: 13px; font-weight: 600; }
-
     .svc-metrics { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
     .svc-metric { background: rgba(255,255,255,0.03); border-radius: 6px; padding: 6px 8px; }
     .svc-metric-label { font-size: 9px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 2px; }
     .svc-metric-value { font-size: 12px; font-weight: 600; font-family: var(--mono); }
     .svc-metric-value.green { color: var(--yes); }
-    .svc-metric-value.red { color: var(--no); }
-    .svc-metric-value.warn { color: var(--warn); }
-
+    .svc-metric-value.red   { color: var(--no); }
+    .svc-metric-value.warn  { color: var(--warn); }
     .svc-failures { margin-top: 8px; font-size: 11px; color: var(--no); display: flex; align-items: center; gap: 5px; }
-
-    /* ── Dep Graph ── */
-    .dep-graph-wrap {
-      background: rgba(255,255,255,0.025);
-      border: 1px solid rgba(255,255,255,0.07);
-      border-radius: 14px; padding: 20px;
-    }
-    #depCanvas { width: 100%; height: 260px; display: block; }
-
-    /* ── Incident Log ── */
+ 
+    /* ── Incidents ── */
     .incident-list { display: flex; flex-direction: column; gap: 8px; }
-
     .incident {
       background: rgba(255,255,255,0.025);
       border: 1px solid rgba(255,255,255,0.07);
@@ -240,15 +199,19 @@
     }
     .incident:hover { border-color: rgba(255,255,255,0.12); background: rgba(255,255,255,0.04); }
     .incident.critical { border-left: 2px solid var(--no); }
-    .incident.warning { border-left: 2px solid var(--warn); }
-
+    .incident.warning  { border-left: 2px solid var(--warn); }
     .inc-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
     .inc-left { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
     .inc-service { font-size: 13px; font-weight: 600; }
     .inc-time { font-size: 11px; color: var(--muted); font-family: var(--mono); }
-    .inc-type { font-size: 11px; color: var(--muted); margin-bottom: 6px; }
-    .inc-confidence { font-size: 11px; color: var(--muted); }
-
+    .inc-type { font-size: 11px; color: var(--muted); margin-bottom: 4px; }
+    .inc-count {
+      font-size: 11px; color: var(--muted);
+      background: rgba(255,255,255,0.05);
+      border: 1px solid var(--border);
+      border-radius: 20px; padding: 1px 8px;
+      font-family: var(--mono);
+    }
     .diag-panel {
       margin-top: 12px;
       background: rgba(0,0,0,0.3);
@@ -268,94 +231,137 @@
       border: 1px solid rgba(99,102,241,0.2);
       padding: 3px 8px; border-radius: 6px;
     }
+    .chain-node.root { background: rgba(239,68,68,0.15); color: var(--no); border-color: rgba(239,68,68,0.2); }
     .chain-arrow { color: var(--muted); font-size: 12px; }
-
-    .recs { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }
+    .recs { display: flex; flex-direction: column; gap: 6px; margin-top: 6px; }
     .rec-item { background: rgba(255,255,255,0.03); border-radius: 8px; padding: 10px 12px; }
     .rec-header { display: flex; align-items: center; gap: 6px; margin-bottom: 4px; }
     .rec-priority { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
-    .pri-immediate { background: var(--no); }
+    .pri-immediate  { background: var(--no); }
     .pri-short-term { background: var(--warn); }
-    .pri-long-term { background: var(--yes); }
+    .pri-long-term  { background: var(--yes); }
     .rec-action { font-size: 12px; font-weight: 500; }
     .rec-cmd { font-family: var(--mono); font-size: 11px; color: #a78bfa; background: rgba(99,102,241,0.1); padding: 4px 8px; border-radius: 5px; margin-top: 4px; display: inline-block; }
-
-    /* ── Metrics Panel ── */
+ 
+    /* ── Metrics charts ── */
     .metrics-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
-    .metric-chart-card {
+    .chart-card {
       background: rgba(255,255,255,0.025);
       border: 1px solid rgba(255,255,255,0.07);
-      border-radius: 14px; padding: 16px;
+      border-radius: 14px; padding: 16px 18px;
     }
-    .metric-chart-title { font-size: 12px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 12px; }
-    .sparkline { height: 60px; display: flex; align-items: flex-end; gap: 2px; }
-    .spark-bar { flex: 1; border-radius: 2px 2px 0 0; min-height: 2px; transition: height 0.3s; }
-    .spark-bar.green { background: var(--yes); opacity: 0.7; }
-    .spark-bar.red { background: var(--no); opacity: 0.7; }
-
-    /* ── Scrollbar ── */
-    * { scrollbar-width: thin; scrollbar-color: #3f3f46 transparent; }
-
-    /* ── Responsive ── */
+    .chart-card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+    .chart-card-name { font-size: 12px; font-weight: 600; display: flex; align-items: center; gap: 8px; }
+    .chart-card-cur { font-family: var(--mono); font-size: 12px; font-weight: 600; }
+    .chart-card-cur.fast { color: var(--yes); }
+    .chart-card-cur.slow { color: var(--warn); }
+    .chart-card-cur.dead { color: var(--no); }
+    .chart-wrap { position: relative; height: 110px; }
+    .chart-no-data {
+      height: 110px; display: flex; align-items: center; justify-content: center;
+      color: var(--muted); font-size: 12px; font-family: var(--mono);
+    }
+ 
+    /* ── Topology ── */
+    .dep-graph-wrap {
+      background: rgba(255,255,255,0.025);
+      border: 1px solid rgba(255,255,255,0.07);
+      border-radius: 14px; padding: 20px;
+      margin-bottom: 16px;
+    }
+    #depCanvas { width: 100%; height: 360px; display: block; }
+    .topo-legend {
+      display: flex; gap: 16px; margin-top: 14px;
+      padding-top: 14px; border-top: 1px solid var(--border);
+      flex-wrap: wrap;
+    }
+    .legend-item { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--muted); }
+    .legend-dot { width: 8px; height: 8px; border-radius: 50%; }
+ 
+    /* Fault chains grid */
+    .fault-chains-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+    .fc-card {
+      background: rgba(255,255,255,0.025);
+      border: 1px solid rgba(255,255,255,0.07);
+      border-radius: 12px; padding: 14px;
+    }
+    .fc-title { font-size: 12px; font-weight: 700; display: flex; align-items: center; gap: 6px; margin-bottom: 6px; }
+    .fc-title .fc-root-name { font-family: var(--mono); color: var(--no); }
+    .fc-desc { font-size: 11px; color: var(--muted); margin-bottom: 10px; line-height: 1.4; }
+    .fc-affected { display: flex; gap: 5px; flex-wrap: wrap; }
+    .fc-chip {
+      font-size: 10px; font-family: var(--mono);
+      background: rgba(255,255,255,0.05);
+      border: 1px solid var(--border);
+      border-radius: 5px; padding: 2px 7px;
+      color: var(--muted);
+    }
+ 
+    .empty { text-align: center; padding: 40px; color: var(--muted); font-size: 13px; }
+    .spin { animation: spin 1s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+ 
     @media (max-width: 1100px) {
       .stats-grid { grid-template-columns: repeat(2, 1fr); }
       .service-grid { grid-template-columns: repeat(2, 1fr); }
+      .metrics-grid { grid-template-columns: 1fr; }
+      .fault-chains-grid { grid-template-columns: repeat(2, 1fr); }
     }
-
-    .spin { animation: spin 1s linear infinite; }
-    @keyframes spin { to { transform: rotate(360deg); } }
-
-    .empty { text-align: center; padding: 40px; color: var(--muted); font-size: 13px; }
   </style>
 </head>
 <body>
-
+ 
 <!-- Sidebar -->
 <aside class="sidebar">
   <div class="sidebar-logo">
     <div class="logo-icon">⬡</div>
     <span class="logo-text">BKR Monitor</span>
   </div>
-
+ 
   <nav class="sidebar-nav">
-    <button class="nav-item active" onclick="switchTab('overview', this)">
+    <button class="nav-item active" onclick="switchTab('overview',this)">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
       Overview
     </button>
-    <button class="nav-item" onclick="switchTab('services', this)">
+    <button class="nav-item" onclick="switchTab('services',this)">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.22 4.22l2.12 2.12M17.66 17.66l2.12 2.12M2 12h3M19 12h3M4.22 19.78l2.12-2.12M17.66 6.34l2.12-2.12"/></svg>
       Services
     </button>
-    <button class="nav-item" onclick="switchTab('incidents', this)">
+    <button class="nav-item" onclick="switchTab('metrics',this)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+      Metrics
+    </button>
+    <button class="nav-item" onclick="switchTab('incidents',this)">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
       Incidents
+      <span class="nav-badge-count" id="navIncBadge" style="display:none"></span>
     </button>
-    <button class="nav-item" onclick="switchTab('topology', this)">
+    <button class="nav-item" onclick="switchTab('topology',this)">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
       Topology
     </button>
   </nav>
-
+ 
   <div class="sidebar-footer">
     <div class="status-card">
       <div class="status-row">
         <span class="status-label">LLM Engine</span>
         <div style="display:flex;align-items:center;gap:5px">
-          <div class="status-dot" id="llmDot"></div>
-          <span id="llmStatusText" style="font-size:11px;font-weight:600"></span>
+          <div class="status-dot dot-gray" id="llmDot"></div>
+          <span id="llmStatusText" style="font-size:11px;font-weight:600;color:var(--muted)">Checking…</span>
         </div>
       </div>
-      <div class="status-row" style="margin-bottom:0">
+      <div class="status-row">
         <span class="status-label">Collector</span>
         <div style="display:flex;align-items:center;gap:5px">
-          <div class="status-dot" id="collectorDot"></div>
-          <span id="collectorStatusText" style="font-size:11px;font-weight:600"></span>
+          <div class="status-dot dot-gray" id="collectorDot"></div>
+          <span id="collectorStatusText" style="font-size:11px;font-weight:600;color:var(--muted)">Checking…</span>
         </div>
       </div>
     </div>
   </div>
 </aside>
-
+ 
 <!-- Main -->
 <main class="main">
   <div class="topbar">
@@ -371,12 +377,12 @@
       </button>
     </div>
   </div>
-
+ 
   <div class="content">
-
+ 
     <!-- OVERVIEW -->
     <div class="panel active" id="panel-overview">
-      <div class="stats-grid" id="statsGrid">
+      <div class="stats-grid">
         <div class="stat-card">
           <div class="stat-label">Total Services</div>
           <div class="stat-value" id="statTotal">—</div>
@@ -388,9 +394,9 @@
           <div class="stat-sub" id="statHealthySub">All systems operational</div>
         </div>
         <div class="stat-card">
-          <div class="stat-label">Incidents (24h)</div>
+          <div class="stat-label">Incidents (unique)</div>
           <div class="stat-value red" id="statIncidents">—</div>
-          <div class="stat-sub">Detected anomalies</div>
+          <div class="stat-sub" id="statIncSub">Grouped anomalies</div>
         </div>
         <div class="stat-card">
           <div class="stat-label">LLM Diagnoses</div>
@@ -398,18 +404,18 @@
           <div class="stat-sub">Claude AI analyses</div>
         </div>
       </div>
-
+ 
       <div class="section">
         <div class="section-header">
           <div class="section-title">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.22 4.22l2.12 2.12M17.66 17.66l2.12 2.12M2 12h3M19 12h3M4.22 19.78l2.12-2.12M17.66 6.34l2.12-2.12"/></svg>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.22 4.22l2.12 2.12M17.66 17.66l2.12 2.12M2 12h3M19 12h3"/></svg>
             Service Status
           </div>
-          <span id="systemBadge" class="badge badge-gray">Loading...</span>
+          <span id="systemBadge" class="badge badge-gray">Loading…</span>
         </div>
         <div class="service-grid" id="serviceGridOverview"></div>
       </div>
-
+ 
       <div class="section">
         <div class="section-header">
           <div class="section-title">
@@ -421,20 +427,34 @@
         <div class="incident-list" id="incidentListOverview"></div>
       </div>
     </div>
-
+ 
     <!-- SERVICES -->
     <div class="panel" id="panel-services">
       <div class="section">
         <div class="section-header">
           <div class="section-title">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3"/></svg>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/></svg>
             All Services
           </div>
         </div>
         <div class="service-grid" id="serviceGridFull"></div>
       </div>
     </div>
-
+ 
+    <!-- METRICS -->
+    <div class="panel" id="panel-metrics">
+      <div class="section">
+        <div class="section-header">
+          <div class="section-title">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+            Response Time — Last 40 Polls
+          </div>
+          <span style="font-size:11px;color:var(--muted)">Auto-refreshes every 20 s</span>
+        </div>
+        <div class="metrics-grid" id="metricsGrid"></div>
+      </div>
+    </div>
+ 
     <!-- INCIDENTS -->
     <div class="panel" id="panel-incidents">
       <div class="section">
@@ -443,12 +463,12 @@
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>
             Incident Log
           </div>
-          <span id="incidentCountBadge" class="badge badge-gray">0 incidents</span>
+          <span id="incidentCountBadge" class="badge badge-gray">0</span>
         </div>
         <div class="incident-list" id="incidentListFull"></div>
       </div>
     </div>
-
+ 
     <!-- TOPOLOGY -->
     <div class="panel" id="panel-topology">
       <div class="section">
@@ -460,360 +480,575 @@
         </div>
         <div class="dep-graph-wrap">
           <canvas id="depCanvas"></canvas>
+          <div class="topo-legend">
+            <div class="legend-item"><div class="legend-dot" style="background:var(--yes)"></div> Healthy</div>
+            <div class="legend-item"><div class="legend-dot" style="background:var(--warn)"></div> Warning</div>
+            <div class="legend-item"><div class="legend-dot" style="background:var(--no)"></div> Down</div>
+            <div class="legend-item"><div class="legend-dot" style="background:var(--muted)"></div> Unknown</div>
+            <span style="margin-left:auto;font-size:11px;color:var(--muted)">Arrow → depends on</span>
+          </div>
         </div>
+ 
+        <div class="section-header" style="margin-top:8px">
+          <div class="section-title">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>
+            Fault Propagation Chains
+          </div>
+        </div>
+        <div class="fault-chains-grid" id="faultChainsGrid"></div>
       </div>
     </div>
-
+ 
   </div>
 </main>
-
+ 
 <script>
 // ── State ──────────────────────────────────────────────────────────────────
 let _services = {};
 let _incidents = [];
 let _serviceMap = null;
+let _metricsHistory = [];
+let _charts = {};
 let _activePanel = 'overview';
-
-// ── Navigation ─────────────────────────────────────────────────────────────
+ 
 const TABS = {
-  overview:  { title: 'System Overview',       sub: 'Real-time microservice monitoring with LLM fault diagnosis' },
-  services:  { title: 'Services',              sub: 'Health status and metrics for all monitored endpoints' },
-  incidents: { title: 'Incident Log',          sub: 'Detected anomalies with LLM root cause analysis' },
-  topology:  { title: 'Service Topology',      sub: 'Dependency graph and fault propagation chains' },
+  overview:  ['System Overview',       'Real-time microservice monitoring with LLM fault diagnosis'],
+  services:  ['Services',              'Health status and metrics for all monitored endpoints'],
+  metrics:   ['Metrics',               'Response time history — last 40 polls per service'],
+  incidents: ['Incident Log',          'Detected anomalies with LLM root cause analysis'],
+  topology:  ['Service Topology',      'Dependency graph and fault propagation chains'],
 };
-
+ 
+// ── Navigation ─────────────────────────────────────────────────────────────
 function switchTab(name, el) {
   document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
   if (el) el.classList.add('active');
   document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
-  document.getElementById('panel-' + name).classList.add('active');
+  document.getElementById('panel-' + name)?.classList.add('active');
   _activePanel = name;
-  document.getElementById('pageTitle').textContent = TABS[name].title;
-  document.getElementById('pageSubtitle').textContent = TABS[name].sub;
+  const [title, sub] = TABS[name] || ['', ''];
+  document.getElementById('pageTitle').textContent = title;
+  document.getElementById('pageSubtitle').textContent = sub;
   if (name === 'topology') renderDepGraph();
+  if (name === 'metrics')  renderMetrics();
 }
-
+ 
 function switchTabByName(name) {
-  const btns = document.querySelectorAll('.nav-item');
-  const names = ['overview','services','incidents','topology'];
-  btns.forEach((b,i) => { if (names[i] === name) switchTab(name, b); });
+  const order = ['overview', 'services', 'metrics', 'incidents', 'topology'];
+  document.querySelectorAll('.nav-item').forEach((btn, i) => {
+    if (order[i] === name) switchTab(name, btn);
+  });
 }
-
-// ── Data fetching ──────────────────────────────────────────────────────────
+ 
+// ── Fetch ──────────────────────────────────────────────────────────────────
 async function fetchJSON(url) {
-  const r = await fetch(url);
-  if (!r.ok) throw new Error(r.status);
-  return r.json();
+  try {
+    const r = await fetch(url);
+    if (!r.ok) throw new Error(r.status);
+    return await r.json();
+  } catch { return null; }
 }
-
+ 
 async function refreshAll() {
   const icon = document.getElementById('refreshIcon');
   icon.classList.add('spin');
   try {
-    const [svcData, incData, mapData, engineData] = await Promise.allSettled([
+    const [svc, inc, map, eng, hist] = await Promise.all([
       fetchJSON('/api/services'),
       fetchJSON('/api/incidents'),
       fetchJSON('/api/service-map'),
       fetchJSON('/api/diagnostic-engine/health'),
+      fetchJSON('/api/metrics/history?limit=40'),
     ]);
-
-    if (svcData.status === 'fulfilled') {
-      _services = svcData.value;
-      updateSidebarStatus(true);
+ 
+    if (svc)  { _services = svc; updateSidebarStatus(true); } else updateSidebarStatus(false);
+    if (inc)  _incidents = inc;
+    if (map)  _serviceMap = map;
+    if (hist) _metricsHistory = hist;
+ 
+    // LLM status
+    const llmDot = document.getElementById('llmDot');
+    const llmTxt = document.getElementById('llmStatusText');
+    if (eng?.llm_available) {
+      llmDot.className = 'status-dot dot-green';
+      llmTxt.textContent = 'Available'; llmTxt.style.color = 'var(--yes)';
     } else {
-      updateSidebarStatus(false);
+      llmDot.className = 'status-dot dot-red';
+      llmTxt.textContent = 'Offline'; llmTxt.style.color = 'var(--no)';
     }
-
-    if (incData.status === 'fulfilled') _incidents = incData.value;
-    if (mapData.status === 'fulfilled') _serviceMap = mapData.value;
-
-    if (engineData.status === 'fulfilled') {
-      const e = engineData.value;
-      const dot = document.getElementById('llmDot');
-      const txt = document.getElementById('llmStatusText');
-      if (e.llm_available) {
-        dot.className = 'status-dot dot-green';
-        txt.textContent = 'Available';
-        txt.style.color = 'var(--yes)';
-      } else {
-        dot.className = 'status-dot dot-red';
-        txt.textContent = 'Offline';
-        txt.style.color = 'var(--no)';
-      }
-    }
-
+ 
     renderAll();
-    document.getElementById('lastUpdated').textContent = 'Updated ' + new Date().toLocaleTimeString('en-US', {hour:'2-digit',minute:'2-digit',second:'2-digit'});
-  } finally {
-    icon.classList.remove('spin');
-  }
+    document.getElementById('lastUpdated').textContent =
+      'Updated ' + new Date().toLocaleTimeString('en-US', {hour:'2-digit',minute:'2-digit',second:'2-digit'});
+  } finally { icon.classList.remove('spin'); }
 }
-
+ 
 function updateSidebarStatus(ok) {
   const dot = document.getElementById('collectorDot');
   const txt = document.getElementById('collectorStatusText');
-  if (ok) {
-    dot.className = 'status-dot dot-green';
-    txt.textContent = 'Online';
-    txt.style.color = 'var(--yes)';
-  } else {
-    dot.className = 'status-dot dot-red';
-    txt.textContent = 'Offline';
-    txt.style.color = 'var(--no)';
-  }
+  dot.className = 'status-dot ' + (ok ? 'dot-green' : 'dot-red');
+  txt.textContent = ok ? 'Online' : 'Offline';
+  txt.style.color = ok ? 'var(--yes)' : 'var(--no)';
 }
-
-// ── Render ─────────────────────────────────────────────────────────────────
+ 
+// ── Helpers ────────────────────────────────────────────────────────────────
+function statusClass(s) {
+  if (!s) return 'unknown';
+  s = s.toLowerCase();
+  if (s === 'healthy') return 'healthy';
+  if (['down','error','timeout','critical','unhealthy'].includes(s)) return 'down';
+  if (['warning','degraded','high_latency'].includes(s)) return 'unhealthy';
+  return 'unknown';
+}
+function statusBadge(s) {
+  const cls = statusClass(s);
+  const map = {healthy:'green', down:'red', unhealthy:'yellow', unknown:'gray'};
+  return `<span class="badge badge-${map[cls]||'gray'}">${s||'unknown'}</span>`;
+}
+function fmtMs(rt) {
+  if (rt == null) return '—';
+  return Math.round(parseFloat(rt) * 1000) + 'ms';
+}
+function msClass(rt) {
+  if (rt == null) return '';
+  const ms = parseFloat(rt) * 1000;
+  if (ms < 100) return 'green';
+  if (ms < 500) return 'warn';
+  return 'red';
+}
+function fmtTime(ts) {
+  if (!ts) return '—';
+  return new Date(ts).toLocaleString('en-US', {month:'short',day:'numeric',hour:'2-digit',minute:'2-digit',second:'2-digit'});
+}
+ 
+// ── Incident grouping ──────────────────────────────────────────────────────
+function groupIncidents(incidents) {
+  const map = {};
+  for (const inc of incidents) {
+    const key = `${inc.service_name}|${inc.incident_type}|${inc.severity}`;
+    if (!map[key]) {
+      map[key] = { ...inc, count: 1 };
+    } else {
+      map[key].count++;
+      // Keep latest timestamp
+      if ((inc.created_at || '') > (map[key].created_at || '')) {
+        map[key].created_at = inc.created_at;
+        // Prefer Claude diagnosis over heuristic
+        if (inc.diagnosis?.diagnosis_source === 'claude_api') {
+          map[key].diagnosis = inc.diagnosis;
+        }
+      }
+    }
+  }
+  return Object.values(map).sort((a,b) => (b.created_at||'').localeCompare(a.created_at||''));
+}
+ 
+// ── Render all ─────────────────────────────────────────────────────────────
 function renderAll() {
   renderStats();
   renderServiceGrid('serviceGridOverview', 6);
   renderServiceGrid('serviceGridFull', null);
-  renderIncidentList('incidentListOverview', 5);
-  renderIncidentList('incidentListFull', null);
+  renderIncidentList('incidentListOverview', 5, true);
+  renderIncidentList('incidentListFull', null, false);
+  updateIncidentBadge();
   if (_activePanel === 'topology') renderDepGraph();
+  if (_activePanel === 'metrics')  renderMetrics();
 }
-
-function statusClass(s) {
-  if (s === 'healthy') return 'healthy';
-  if (s === 'down' || s === 'error' || s === 'timeout') return 'down';
-  if (s === 'unhealthy') return 'unhealthy';
-  return 'unknown';
-}
-
-function statusBadge(s) {
-  if (s === 'healthy') return '<span class="badge badge-green">healthy</span>';
-  if (s === 'down') return '<span class="badge badge-red">down</span>';
-  if (s === 'unhealthy') return '<span class="badge badge-yellow">unhealthy</span>';
-  if (s === 'timeout') return '<span class="badge badge-red">timeout</span>';
-  return '<span class="badge badge-gray">' + s + '</span>';
-}
-
+ 
+// ── Stats ──────────────────────────────────────────────────────────────────
 function renderStats() {
   const svcs = Object.values(_services);
   const total = svcs.length;
-  const healthy = svcs.filter(s => s.status === 'healthy').length;
-  const llmCount = _incidents.filter(i => i.diagnosis && i.diagnosis.diagnosis_source === 'claude_api').length;
-
-  document.getElementById('statTotal').textContent = total || '—';
-  document.getElementById('statHealthy').textContent = healthy || '—';
-  document.getElementById('statIncidents').textContent = _incidents.length || '0';
+  const healthy = svcs.filter(s => statusClass(s.status) === 'healthy').length;
+  const grouped = groupIncidents(_incidents);
+  const llmCount = grouped.filter(g => g.diagnosis?.diagnosis_source === 'claude_api').length;
+ 
+  document.getElementById('statTotal').textContent   = total || '—';
+  document.getElementById('statHealthy').textContent = healthy || '0';
+  document.getElementById('statIncidents').textContent = grouped.length;
   document.getElementById('statLLM').textContent = llmCount;
-
+ 
   const sub = document.getElementById('statHealthySub');
   if (total && healthy === total) sub.textContent = 'All systems operational';
-  else if (total) sub.textContent = (total - healthy) + ' service(s) degraded';
-
+  else if (total) sub.textContent = `${total - healthy} service(s) degraded`;
+ 
+  const sub2 = document.getElementById('statIncSub');
+  sub2.textContent = `${_incidents.length} total events`;
+ 
   const badge = document.getElementById('systemBadge');
   if (!total) return;
-  if (healthy === total) { badge.className = 'badge badge-green'; badge.textContent = 'All Systems Operational'; }
-  else if (healthy >= total / 2) { badge.className = 'badge badge-yellow'; badge.textContent = 'Degraded'; }
-  else { badge.className = 'badge badge-red'; badge.textContent = 'Critical'; }
+  const down = svcs.filter(s => statusClass(s.status) === 'down').length;
+  if (down === 0 && healthy === total) {
+    badge.className = 'badge badge-green'; badge.textContent = 'All Systems Operational';
+  } else if (down > 0) {
+    badge.className = 'badge badge-red'; badge.textContent = `${down} Service(s) Down`;
+  } else {
+    badge.className = 'badge badge-yellow'; badge.textContent = 'Degraded';
+  }
 }
-
-function renderServiceGrid(containerId, limit) {
-  const el = document.getElementById(containerId);
+ 
+// ── Service grid ───────────────────────────────────────────────────────────
+function renderServiceGrid(id, limit) {
+  const el = document.getElementById(id);
   if (!el) return;
   const entries = Object.entries(_services);
   const items = limit ? entries.slice(0, limit) : entries;
   if (!items.length) { el.innerHTML = '<div class="empty">No service data available</div>'; return; }
-
+ 
   el.innerHTML = items.map(([name, s]) => {
     const sc = statusClass(s.status);
-    const rt = s.last_response_time != null ? (s.last_response_time * 1000).toFixed(0) + 'ms' : '—';
-    const rtClass = s.last_response_time > 2 ? 'red' : s.last_response_time > 0.5 ? 'warn' : 'green';
-    const lastCheck = s.last_check ? new Date(s.last_check).toLocaleTimeString('en-US', {hour:'2-digit',minute:'2-digit',second:'2-digit'}) : '—';
-    const failures = s.consecutive_failures || 0;
-    return `
-      <div class="service-card ${sc}">
-        <div class="svc-header">
-          <div class="svc-name-row">
-            <div class="svc-dot ${s.status || 'unknown'}"></div>
-            <span class="svc-name">${name}</span>
-          </div>
-          ${statusBadge(s.status)}
+    const rt = fmtMs(s.last_response_time);
+    const rtc = msClass(s.last_response_time);
+    const lc = s.last_check ? new Date(s.last_check).toLocaleTimeString('en-US') : '—';
+    const fails = s.consecutive_failures || 0;
+    return `<div class="service-card ${sc}">
+      <div class="svc-header">
+        <div class="svc-name-row">
+          <div class="svc-dot ${s.status || 'unknown'}"></div>
+          <span class="svc-name">${name}</span>
         </div>
-        <div class="svc-metrics">
-          <div class="svc-metric">
-            <div class="svc-metric-label">Response</div>
-            <div class="svc-metric-value ${rtClass}">${rt}</div>
-          </div>
-          <div class="svc-metric">
-            <div class="svc-metric-label">Last Check</div>
-            <div class="svc-metric-value">${lastCheck}</div>
-          </div>
+        ${statusBadge(s.status)}
+      </div>
+      <div class="svc-metrics">
+        <div class="svc-metric">
+          <div class="svc-metric-label">Response</div>
+          <div class="svc-metric-value ${rtc}">${rt}</div>
         </div>
-        ${failures > 0 ? `<div class="svc-failures"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:11px;height:11px"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>${failures} consecutive failures</div>` : ''}
-      </div>`;
+        <div class="svc-metric">
+          <div class="svc-metric-label">Last Check</div>
+          <div class="svc-metric-value">${lc}</div>
+        </div>
+      </div>
+      ${fails > 0 ? `<div class="svc-failures"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:11px;height:11px"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>${fails} consecutive failures</div>` : ''}
+    </div>`;
   }).join('');
 }
-
-function renderIncidentList(containerId, limit) {
-  const el = document.getElementById(containerId);
+ 
+// ── Incident list ──────────────────────────────────────────────────────────
+function renderIncidentList(id, limit, grouped) {
+  const el = document.getElementById(id);
   if (!el) return;
-  const items = limit ? _incidents.slice(0, limit) : _incidents;
-
-  if (containerId === 'incidentListFull') {
-    const badge = document.getElementById('incidentCountBadge');
-    if (badge) badge.textContent = _incidents.length + ' incidents';
-  }
-
+ 
+  const all = grouped ? groupIncidents(_incidents) : groupIncidents(_incidents);
+  const items = limit ? all.slice(0, limit) : all;
+ 
   if (!items.length) { el.innerHTML = '<div class="empty">No incidents recorded</div>'; return; }
-
+ 
   el.innerHTML = items.map((inc, idx) => {
     const diag = inc.diagnosis;
-    const isLLM = diag && diag.diagnosis_source === 'claude_api';
-    const time = inc.created_at ? new Date(inc.created_at).toLocaleString('en-US', {month:'short',day:'numeric',hour:'2-digit',minute:'2-digit',second:'2-digit'}) : '—';
-    const conf = diag && diag.confidence ? Math.round(diag.confidence * 100) + '% confidence' : '';
-
-    // Clean description — remove raw Python dict if present
+    const isLLM = diag?.diagnosis_source === 'claude_api';
+    const time = fmtTime(inc.created_at);
+    const conf = diag?.confidence ? Math.round(diag.confidence * 100) + '% confidence' : '';
     let desc = inc.description || '';
-    const colonIdx = desc.indexOf(': {');
-    if (colonIdx > -1) desc = desc.substring(0, colonIdx);
-    const incType = inc.incident_type ? inc.incident_type.replace(/_/g, ' ') : '';
-
-    return `
-      <div class="incident ${inc.severity}" onclick="toggleDiag(${idx}, '${containerId}')">
-        <div class="inc-header">
-          <div class="inc-left">
-            <span class="inc-service">${inc.service_name}</span>
-            <span class="badge badge-${inc.severity === 'critical' ? 'red' : 'yellow'}">${inc.severity}</span>
-            ${isLLM ? '<span class="badge badge-accent">Claude AI</span>' : diag ? '<span class="badge badge-gray">Heuristic</span>' : ''}
-            ${conf ? `<span class="inc-confidence">${conf}</span>` : ''}
-          </div>
-          <span class="inc-time">${time}</span>
+    const ci = desc.indexOf(': {');
+    if (ci > -1) desc = desc.substring(0, ci);
+    const incType = (inc.incident_type || '').replace(/_/g, ' ');
+ 
+    return `<div class="incident ${inc.severity}" onclick="toggleDiag('${id}',${idx})">
+      <div class="inc-header">
+        <div class="inc-left">
+          <span class="inc-service">${inc.service_name}</span>
+          <span class="badge badge-${inc.severity==='critical'?'red':'yellow'}">${inc.severity}</span>
+          ${isLLM ? '<span class="badge badge-accent">Claude AI</span>' : diag ? '<span class="badge badge-gray">Heuristic</span>' : ''}
+          ${conf ? `<span style="font-size:11px;color:var(--muted)">${conf}</span>` : ''}
+          ${inc.count > 1 ? `<span class="inc-count">${inc.count}×</span>` : ''}
         </div>
-        <div class="inc-type">${incType}${desc ? ' — ' + desc : ''}</div>
-        ${diag ? renderDiagPanel(idx, diag, containerId) : '<div style="font-size:11px;color:var(--muted);margin-top:4px">No diagnosis yet</div>'}
-      </div>`;
-  }).join('');
-}
-
-function renderDiagPanel(idx, diag, containerId) {
-  const chain = (diag.fault_chain || []).map(n => `<span class="chain-node">${n}</span>`).join('<span class="chain-arrow">→</span>');
-  const recs = (diag.recommendations || []).map(r => {
-    const priClass = r.priority === 'immediate' ? 'pri-immediate' : r.priority === 'short-term' ? 'pri-short-term' : 'pri-long-term';
-    return `<div class="rec-item">
-      <div class="rec-header">
-        <div class="rec-priority ${priClass}"></div>
-        <span class="rec-action">${r.action}</span>
+        <span class="inc-time">${time}</span>
       </div>
-      ${r.command ? `<div class="rec-cmd">${r.command}</div>` : ''}
+      <div class="inc-type">${incType}${desc ? ' — ' + desc.substring(0, 100) : ''}</div>
+      ${diag ? renderDiag(`${id}-${idx}`, diag) : '<div style="font-size:11px;color:var(--muted);margin-top:4px">No diagnosis yet</div>'}
     </div>`;
   }).join('');
-
-  return `
-    <div class="diag-panel" id="diag-${containerId}-${idx}">
-      <div class="diag-title">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-        LLM Diagnosis
-      </div>
-      ${diag.root_cause ? `<div class="diag-row"><div class="diag-row-label">Root Cause</div><div class="diag-row-value">${diag.root_cause}</div></div>` : ''}
-      ${chain ? `<div class="diag-row"><div class="diag-row-label">Fault Chain</div><div class="fault-chain">${chain}</div></div>` : ''}
-      ${diag.fault_chain_explanation ? `<div class="diag-row"><div class="diag-row-label">Explanation</div><div class="diag-row-value" style="font-size:12px;color:var(--muted)">${diag.fault_chain_explanation}</div></div>` : ''}
-      ${diag.predicted_impact && diag.predicted_impact.length ? `<div class="diag-row"><div class="diag-row-label">Predicted Impact</div><div class="diag-row-value">${diag.predicted_impact.join(', ')}</div></div>` : ''}
-      ${recs ? `<div class="diag-row"><div class="diag-row-label">Recommendations</div><div class="recs">${recs}</div></div>` : ''}
-    </div>`;
 }
-
-function toggleDiag(idx, containerId) {
-  const el = document.getElementById(`diag-${containerId}-${idx}`);
+ 
+function renderDiag(uid, diag) {
+  const isLLM = diag.diagnosis_source === 'claude_api';
+  const chain = (diag.fault_chain || []).map((n, i) =>
+    `${i===0 ? `<span class="chain-node root">${n}</span>` : `<span class="chain-node">${n}</span>`}${i < (diag.fault_chain.length-1) ? '<span class="chain-arrow">→</span>' : ''}`
+  ).join('');
+  const recs = (diag.recommendations || []).slice(0, 3).map(r => {
+    const pc = r.priority === 'immediate' ? 'pri-immediate' : r.priority === 'short-term' ? 'pri-short-term' : 'pri-long-term';
+    return `<div class="rec-item"><div class="rec-header"><div class="rec-priority ${pc}"></div><span class="rec-action">${r.action||''}</span></div>${r.command ? `<div class="rec-cmd">${r.command}</div>` : ''}</div>`;
+  }).join('');
+  return `<div class="diag-panel" id="diag-${uid}">
+    <div class="diag-title">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+      ${isLLM ? 'Claude AI Diagnosis' : 'Heuristic Diagnosis'}
+    </div>
+    ${diag.root_cause ? `<div class="diag-row"><div class="diag-row-label">Root Cause</div><div class="diag-row-value">${diag.root_cause}</div></div>` : ''}
+    ${chain ? `<div class="diag-row"><div class="diag-row-label">Fault Chain</div><div class="fault-chain">${chain}</div></div>` : ''}
+    ${diag.fault_chain_explanation ? `<div class="diag-row"><div class="diag-row-label">Explanation</div><div class="diag-row-value" style="font-size:12px;color:var(--muted)">${diag.fault_chain_explanation}</div></div>` : ''}
+    ${diag.predicted_impact?.length ? `<div class="diag-row"><div class="diag-row-label">Predicted Impact</div><div class="diag-row-value">${diag.predicted_impact.join(', ')}</div></div>` : ''}
+    ${recs ? `<div class="diag-row"><div class="diag-row-label">Recommendations</div><div class="recs">${recs}</div></div>` : ''}
+  </div>`;
+}
+ 
+function toggleDiag(listId, idx) {
+  const el = document.getElementById(`diag-${listId}-${idx}`);
   if (el) el.classList.toggle('open');
 }
-
-// ── Dependency Graph ────────────────────────────────────────────────────────
+ 
+function updateIncidentBadge() {
+  const grouped = groupIncidents(_incidents);
+  const crit = grouped.filter(g => g.severity === 'critical').length;
+  const badge = document.getElementById('navIncBadge');
+  const countBadge = document.getElementById('incidentCountBadge');
+  if (crit > 0) { badge.textContent = crit; badge.style.display = ''; }
+  else badge.style.display = 'none';
+  if (countBadge) {
+    countBadge.textContent = `${grouped.length} unique · ${_incidents.length} total`;
+    countBadge.className = crit > 0 ? 'badge badge-red' : 'badge badge-gray';
+  }
+}
+ 
+// ── Metrics charts ─────────────────────────────────────────────────────────
+function renderMetrics() {
+  const grid = document.getElementById('metricsGrid');
+  if (!grid) return;
+ 
+  // Group history by service
+  const byService = {};
+  for (const row of _metricsHistory) {
+    if (!byService[row.service_name]) byService[row.service_name] = [];
+    byService[row.service_name].push(row);
+  }
+  // Ensure all known services appear
+  for (const name of Object.keys(_services)) {
+    if (!byService[name]) byService[name] = [];
+  }
+ 
+  if (!Object.keys(byService).length) {
+    grid.innerHTML = '<div class="empty">No metric data yet — collector running…</div>'; return;
+  }
+ 
+  grid.innerHTML = Object.keys(byService).map(name => {
+    const sc = statusClass(_services[name]?.status);
+    const dotColor = sc === 'healthy' ? 'var(--yes)' : sc === 'down' ? 'var(--no)' : 'var(--warn)';
+    const uid = name.replace(/[^a-z0-9]/gi, '_');
+    return `<div class="chart-card">
+      <div class="chart-card-header">
+        <div class="chart-card-name">
+          <div style="width:8px;height:8px;border-radius:50%;background:${dotColor};flex-shrink:0"></div>
+          ${name}
+        </div>
+        <span class="chart-card-cur" id="curMs-${uid}">—</span>
+      </div>
+      <div class="chart-wrap"><canvas id="chart-${uid}"></canvas></div>
+    </div>`;
+  }).join('');
+ 
+  // Render each chart
+  Chart.defaults.color = '#71717a';
+  for (const [name, rows] of Object.entries(byService)) {
+    const uid = name.replace(/[^a-z0-9]/gi, '_');
+    const canvas = document.getElementById('chart-' + uid);
+    if (!canvas) continue;
+    if (_charts[uid]) { _charts[uid].destroy(); delete _charts[uid]; }
+ 
+    const sorted = [...rows].sort((a,b) => (a.collected_at||'').localeCompare(b.collected_at||''));
+    const labels = sorted.map(r => {
+      const d = new Date(r.collected_at);
+      return d.toLocaleTimeString('en-US', {hour:'2-digit',minute:'2-digit',second:'2-digit'});
+    });
+    const data = sorted.map(r => r.response_time != null ? Math.round(parseFloat(r.response_time) * 1000) : null);
+    const statuses = sorted.map(r => statusClass(r.status));
+ 
+    // Current value display
+    const latest = data.filter(d => d != null).at(-1);
+    const curEl = document.getElementById('curMs-' + uid);
+    if (curEl && latest != null) {
+      curEl.textContent = latest + 'ms';
+      curEl.className = 'chart-card-cur ' + (latest < 100 ? 'fast' : latest > 500 ? 'dead' : 'slow');
+    }
+ 
+    if (data.every(d => d == null)) {
+      canvas.parentElement.innerHTML = `<div class="chart-no-data">No response time data for ${name}</div>`;
+      continue;
+    }
+ 
+    const ptColors = statuses.map(s => s === 'healthy' ? '#22c55e' : s === 'down' ? '#ef4444' : '#eab308');
+ 
+    _charts[uid] = new Chart(canvas.getContext('2d'), {
+      type: 'line',
+      data: {
+        labels,
+        datasets: [{
+          label: 'ms',
+          data,
+          borderColor: 'rgba(99,102,241,0.7)',
+          backgroundColor: 'rgba(99,102,241,0.06)',
+          borderWidth: 1.5,
+          pointBackgroundColor: ptColors,
+          pointBorderColor: ptColors,
+          pointRadius: 3, pointHoverRadius: 5,
+          tension: 0.3, fill: true, spanGaps: true,
+        }],
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        animation: { duration: 300 },
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            backgroundColor: '#1c1c1f',
+            borderColor: '#27272a', borderWidth: 1,
+            titleColor: '#f4f4f5', bodyColor: '#a1a1aa',
+            callbacks: { label: item => `${item.raw ?? '—'} ms` },
+          },
+        },
+        scales: {
+          x: {
+            ticks: { font: { family: 'JetBrains Mono', size: 9 }, maxRotation: 0, maxTicksLimit: 5 },
+            grid: { color: 'rgba(255,255,255,0.04)' },
+            border: { color: '#27272a' },
+          },
+          y: {
+            beginAtZero: true,
+            ticks: { font: { family: 'JetBrains Mono', size: 9 }, callback: v => v + 'ms' },
+            grid: { color: 'rgba(255,255,255,0.04)' },
+            border: { color: '#27272a' },
+          },
+        },
+      },
+    });
+  }
+}
+ 
+// ── Topology ───────────────────────────────────────────────────────────────
 function renderDepGraph() {
-  if (!_serviceMap) return;
+  if (!_serviceMap?.services) return;
   const canvas = document.getElementById('depCanvas');
+  if (!canvas) return;
   const ctx = canvas.getContext('2d');
   canvas.width = canvas.parentElement.clientWidth - 40;
-  canvas.height = 260;
+  canvas.height = 360;
   ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-  const services = Object.keys(_serviceMap.services || {});
+ 
+  const services = Object.keys(_serviceMap.services);
   if (!services.length) return;
-
+ 
+  const STATUS_COLORS = {
+    healthy:'#22c55e', down:'#ef4444', error:'#ef4444', timeout:'#ef4444',
+    unhealthy:'#eab308', warning:'#eab308', unknown:'#71717a',
+  };
+  const getColor = name => {
+    const s = (_services[name] && _services[name].status) || 'unknown';
+    return STATUS_COLORS[s] || '#71717a';
+  };
+ 
+  // Depth-based hierarchical layout
+  const deps = _serviceMap.services;
+  const depth = {};
+  function calcDepth(name, visited = new Set()) {
+    if (depth[name] !== undefined) return depth[name];
+    if (visited.has(name)) { depth[name] = 0; return 0; }
+    visited.add(name);
+    const d = deps[name]?.depends_on || [];
+    depth[name] = d.length === 0 ? 0 : Math.max(...d.map(n => calcDepth(n, new Set(visited)))) + 1;
+    return depth[name];
+  }
+  services.forEach(s => calcDepth(s));
+ 
+  const layers = {};
+  for (const s of services) {
+    const d = depth[s] || 0;
+    if (!layers[d]) layers[d] = [];
+    layers[d].push(s);
+  }
+  const layerKeys = Object.keys(layers).map(Number).sort((a,b) => b - a); // deepest at top
+ 
+  const W = canvas.width, H = canvas.height;
   const positions = {};
-  const cols = Math.ceil(Math.sqrt(services.length));
-  const rows = Math.ceil(services.length / cols);
-  const cellW = canvas.width / (cols + 1);
-  const cellH = canvas.height / (rows + 1);
-
-  services.forEach((name, i) => {
-    const col = i % cols;
-    const row = Math.floor(i / cols);
-    positions[name] = { x: cellW * (col + 1), y: cellH * (row + 1) };
+  layerKeys.forEach((layer, li) => {
+    const nodes = layers[layer];
+    const y = 50 + li * (H - 80) / Math.max(layerKeys.length - 1, 1);
+    nodes.forEach((name, ni) => {
+      positions[name] = { x: (W / (nodes.length + 1)) * (ni + 1), y };
+    });
   });
-
-  // Draw edges
-  for (const [name, cfg] of Object.entries(_serviceMap.services)) {
+ 
+  // Edges
+  ctx.setLineDash([4, 4]);
+  for (const [name, cfg] of Object.entries(deps)) {
     for (const dep of (cfg.depends_on || [])) {
       if (!positions[dep] || !positions[name]) continue;
       const from = positions[dep], to = positions[name];
+      const grad = ctx.createLinearGradient(from.x, from.y, to.x, to.y);
+      grad.addColorStop(0, 'rgba(99,102,241,0.25)');
+      grad.addColorStop(1, 'rgba(99,102,241,0.08)');
       ctx.beginPath();
       ctx.moveTo(from.x, from.y);
-      ctx.lineTo(to.x, to.y);
-      ctx.strokeStyle = 'rgba(255,255,255,0.08)';
+      const mx = (from.x + to.x) / 2, my = (from.y + to.y) / 2 - 15;
+      ctx.quadraticCurveTo(mx, my, to.x, to.y);
+      ctx.strokeStyle = grad;
       ctx.lineWidth = 1.5;
       ctx.stroke();
       // arrowhead
-      const angle = Math.atan2(to.y - from.y, to.x - from.x);
-      const mx = (from.x + to.x) / 2, my = (from.y + to.y) / 2;
+      ctx.setLineDash([]);
+      const angle = Math.atan2(to.y - my, to.x - mx);
       ctx.beginPath();
-      ctx.moveTo(mx, my);
-      ctx.lineTo(mx - 8 * Math.cos(angle - 0.4), my - 8 * Math.sin(angle - 0.4));
-      ctx.moveTo(mx, my);
-      ctx.lineTo(mx - 8 * Math.cos(angle + 0.4), my - 8 * Math.sin(angle + 0.4));
-      ctx.strokeStyle = 'rgba(99,102,241,0.3)';
+      ctx.moveTo(to.x - 10 * Math.cos(angle - 0.35), to.y - 10 * Math.sin(angle - 0.35));
+      ctx.lineTo(to.x - 3, to.y - 3);
+      ctx.lineTo(to.x - 10 * Math.cos(angle + 0.35), to.y - 10 * Math.sin(angle + 0.35));
+      ctx.strokeStyle = 'rgba(99,102,241,0.4)'; ctx.lineWidth = 1.5;
       ctx.stroke();
+      ctx.setLineDash([4, 4]);
     }
   }
-
-  // Draw nodes
-  const STATUS_COLORS = {
-    healthy: '#22c55e', down: '#ef4444', error: '#ef4444',
-    timeout: '#ef4444', unhealthy: '#eab308', unknown: '#71717a',
-  };
-
+  ctx.setLineDash([]);
+ 
+  // Nodes
+  const R = 24;
   for (const [name, pos] of Object.entries(positions)) {
-    const svcStatus = (_services[name] && _services[name].status) || 'unknown';
-    const color = STATUS_COLORS[svcStatus] || '#71717a';
-
-    // Outer glow
-    ctx.beginPath();
-    ctx.arc(pos.x, pos.y, 26, 0, Math.PI * 2);
-    ctx.fillStyle = color + '18';
-    ctx.fill();
-
+    const color = getColor(name);
+    const { x, y } = pos;
+ 
+    // Glow
+    const glow = ctx.createRadialGradient(x, y, 0, x, y, R * 2);
+    glow.addColorStop(0, color + '28'); glow.addColorStop(1, 'transparent');
+    ctx.beginPath(); ctx.arc(x, y, R * 2, 0, Math.PI * 2);
+    ctx.fillStyle = glow; ctx.fill();
+ 
     // Ring
-    ctx.beginPath();
-    ctx.arc(pos.x, pos.y, 22, 0, Math.PI * 2);
-    ctx.strokeStyle = color;
-    ctx.lineWidth = 2;
-    ctx.stroke();
-
-    // Inner fill
-    ctx.beginPath();
-    ctx.arc(pos.x, pos.y, 20, 0, Math.PI * 2);
-    ctx.fillStyle = 'rgba(9,9,11,0.8)';
-    ctx.fill();
-
-    // Status dot
-    ctx.beginPath();
-    ctx.arc(pos.x, pos.y, 5, 0, Math.PI * 2);
-    ctx.fillStyle = color;
-    ctx.fill();
-
+    ctx.beginPath(); ctx.arc(x, y, R, 0, Math.PI * 2);
+    ctx.fillStyle = '#121215'; ctx.fill();
+    ctx.strokeStyle = color; ctx.lineWidth = 2; ctx.stroke();
+ 
+    // Center dot
+    ctx.beginPath(); ctx.arc(x, y, 5, 0, Math.PI * 2);
+    ctx.fillStyle = color; ctx.fill();
+ 
     // Label
     ctx.fillStyle = '#a1a1aa';
-    ctx.font = '11px Inter, system-ui';
-    ctx.textAlign = 'center';
-    ctx.fillText(name, pos.x, pos.y + 38);
+    ctx.font = '500 11px Inter, system-ui';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+    ctx.fillText(name, x, y + R + 6);
   }
+ 
+  // Render fault chains
+  renderFaultChains();
 }
-
-// ── Init ───────────────────────────────────────────────────────────────────
+ 
+function renderFaultChains() {
+  const grid = document.getElementById('faultChainsGrid');
+  if (!grid || !_serviceMap?.fault_chains) {
+    if (grid) grid.innerHTML = '<div class="empty" style="grid-column:1/-1">No fault chain data available</div>';
+    return;
+  }
+  grid.innerHTML = Object.entries(_serviceMap.fault_chains).map(([key, chain]) => `
+    <div class="fc-card">
+      <div class="fc-title">
+        <svg viewBox="0 0 24 24" fill="none" stroke="var(--no)" stroke-width="2" style="width:13px;height:13px"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>
+        <span class="fc-root-name">${chain.root || key}</span>
+      </div>
+      <div class="fc-desc">${chain.description || ''}</div>
+      <div class="fc-affected">${(chain.affected||[]).map(s=>`<span class="fc-chip">${s}</span>`).join('')}</div>
+    </div>`).join('');
+}
+ 
+// ── Boot ───────────────────────────────────────────────────────────────────
 refreshAll();
-setInterval(refreshAll, 15000);
+setInterval(refreshAll, 20000);
 </script>
 </body>
 </html>
