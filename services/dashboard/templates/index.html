@@ -961,7 +961,7 @@ function renderDepGraph() {
   const positions = {};
   layerKeys.forEach((layer, li) => {
     const nodes = layers[layer];
-    const y = 50 + li * (H - 80) / Math.max(layerKeys.length - 1, 1);
+    const y = 60 + li * (H - 120) / Math.max(layerKeys.length - 1, 1);
     nodes.forEach((name, ni) => {
       positions[name] = { x: (W / (nodes.length + 1)) * (ni + 1), y };
     });
