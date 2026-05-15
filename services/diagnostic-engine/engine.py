@@ -124,7 +124,7 @@ def call_claude_api(prompt: str) -> dict:
         log_json("warning", "No ANTHROPIC_API_KEY set, using fallback")
         return None
     try:
-        import requests as req
+        import httpx as req
         response = req.post(
             "https://openrouter.ai/api/v1/chat/completions",
             headers={
