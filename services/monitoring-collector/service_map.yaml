@@ -63,6 +63,21 @@ services:
       - database_size
       - replication_lag
 
+  coinops-ui:
+    url: "https://coinops-penina.pp.ua"
+    health_endpoint: "/health"
+    port: 443
+    depends_on:
+      - coinops-api
+    description: "Coin-Ops frontend — crypto market monitoring dashboard (React SPA)"
+
+  coinops-api:
+    url: "https://coinops-penina.pp.ua"
+    health_endpoint: "/api/health"
+    port: 443
+    depends_on: []
+    description: "Coin-Ops backend API — market data aggregation and runtime status"
+
 # Fault propagation chains (precomputed for LLM context)
 # These help the diagnostic engine quickly identify cascading failures
 fault_chains:
@@ -87,3 +102,9 @@ fault_chains:
     affected:
       - web-ui
     description: "Proxy failure means no live data for frontend"
+
+  coinops_api_down:
+    root: coinops-api
+    affected:
+      - coinops-ui
+    description: "Coin-Ops API failure breaks frontend data display"
