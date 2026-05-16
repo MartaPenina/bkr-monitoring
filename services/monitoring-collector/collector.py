@@ -33,6 +33,7 @@ DATABASE_URL = os.environ.get("DATABASE_URL", "postgresql://monitor:monitor@post
 DIAGNOSTIC_ENGINE_URL = os.environ.get("DIAGNOSTIC_ENGINE_URL", "http://diagnostic-engine:8090")
 POLL_INTERVAL = int(os.environ.get("POLL_INTERVAL", "30"))
 PORT = int(os.environ.get("PORT", "8085"))
+N8N_WEBHOOK_URL = os.environ.get("N8N_WEBHOOK_URL", "")
 
 # Anomaly thresholds
 RESPONSE_TIME_THRESHOLD = float(os.environ.get("RESPONSE_TIME_THRESHOLD", "5.0"))
@@ -385,6 +386,23 @@ def trigger_diagnosis(service_name: str, anomaly: dict, incident_id: int):
     except Exception as e:
         log_json("error", "Cannot reach diagnostic engine", error=str(e))
 
+def notify_n8n(service_name: str, anomaly: dict, diagnosis: dict = None):
+    """Send fault alert to n8n webhook for Telegram notification."""
+    if not N8N_WEBHOOK_URL:
+        return
+    try:
+        payload = {
+            "service_name": service_name,
+            "severity": anomaly.get("severity", "warning"),
+            "incident_type": anomaly.get("type", "unknown"),
+            "root_cause": diagnosis.get("root_cause", "Analyzing...") if diagnosis else anomaly.get("last_error", "Service anomaly detected"),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "dashboard_url": "https://fault-lens-penina.pp.ua",
+        }
+        requests.post(N8N_WEBHOOK_URL, json=payload, timeout=5)
+        log_json("info", "n8n notified", service=service_name)
+    except Exception as e:
+        log_json("warning", "Failed to notify n8n", error=str(e))
 
 # ── Main polling loop ───────────────────────────────────────────────────────
 def poll_all_services():
@@ -424,6 +442,7 @@ def poll_all_services():
             )
 
             if incident_id:
+                notify_n8n(svc_name, anomaly)
                 # Trigger LLM diagnosis in background
                 threading.Thread(
                     target=trigger_diagnosis,
