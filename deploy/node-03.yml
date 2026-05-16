@@ -18,6 +18,7 @@ services:
       DIAGNOSTIC_ENGINE_URL: http://diagnostic-engine:8090
       POLL_INTERVAL: "30"
       PORT: "8085"
+      N8N_WEBHOOK_URL: ${N8N_WEBHOOK_URL}
     ports:
       - "8085:8085"
     restart: unless-stopped
