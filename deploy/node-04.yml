@@ -1,0 +1,25 @@
+name: bkr-node04
+services:
+  n8n:
+    image: n8nio/n8n:latest
+    environment:
+      N8N_BASIC_AUTH_ACTIVE: "true"
+      N8N_BASIC_AUTH_USER: admin
+      N8N_BASIC_AUTH_PASSWORD: ${N8N_PASSWORD}
+      N8N_SECURE_COOKIE: "false"
+      N8N_HOST: "0.0.0.0"
+      N8N_PORT: "5678"
+      WEBHOOK_URL: http://10.0.1.14:5678
+    ports:
+      - "5678:5678"
+    volumes:
+      - n8n_data:/home/node/.n8n
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:5678/healthz"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+volumes:
+  n8n_data:
