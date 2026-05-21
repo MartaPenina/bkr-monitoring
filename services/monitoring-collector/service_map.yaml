@@ -2,8 +2,15 @@
 # Defines relationships between microservices for fault chain analysis.
 # The monitoring collector and diagnostic engine use this to understand
 # how failures propagate through the system.
-
+#
+# Two monitored systems:
+#   1. FaultLens own services (GCP europe-central2)
+#   2. CoinOps application (AWS eu-central-1) — cross-cloud monitoring
+ 
 services:
+ 
+  # ── FaultLens own infrastructure (GCP) ──────────────────────
+ 
   web-ui:
     url: "http://bkr-node03-ui-1:80"
     health_endpoint: "/health"
@@ -12,7 +19,7 @@ services:
       - api-proxy
       - history-api
     description: "Frontend web interface serving React SPA via nginx"
-
+ 
   api-proxy:
     url: "http://10.0.1.13:8080"
     health_endpoint: "/health"
@@ -20,7 +27,7 @@ services:
     depends_on:
       - rabbitmq
     description: "API gateway that fetches external data and publishes to queue"
-
+ 
   rabbitmq:
     url: "http://guest:guest@10.0.1.13:15672"
     health_endpoint: "/api/healthchecks/node"
@@ -32,7 +39,7 @@ services:
       - queue_depth
       - consumers_count
       - publish_rate
-
+ 
   history-consumer:
     url: "http://10.0.1.12:8081"
     health_endpoint: null
@@ -42,7 +49,7 @@ services:
       - rabbitmq
       - database
     description: "Consumes queue messages and persists data to PostgreSQL"
-
+ 
   history-api:
     url: "http://10.0.1.12:8000"
     health_endpoint: "/health"
@@ -50,7 +57,7 @@ services:
     depends_on:
       - database
     description: "Read-only REST API for historical data from PostgreSQL"
-
+ 
   database:
     url: "http://10.205.0.3:5432"
     health_endpoint: null
@@ -62,24 +69,57 @@ services:
       - active_connections
       - database_size
       - replication_lag
-
+ 
+  # ── CoinOps application (AWS eu-central-1) ───────────────────
+  # Cross-cloud monitoring: FaultLens on GCP monitors CoinOps on AWS
+  # Ports opened in AWS Security Group for GCP IP: 34.118.111.49
+ 
   coinops-ui:
     url: "https://coinops-penina.pp.ua"
     health_endpoint: "/health"
     port: 443
     depends_on:
-      - coinops-api
-    description: "Coin-Ops frontend — crypto market monitoring dashboard (React SPA)"
-
-  coinops-api:
-    url: "https://coinops-penina.pp.ua"
-    health_endpoint: "/api/health"
-    port: 443
+      - coinops-proxy
+    description: "CoinOps frontend — crypto market dashboard (React SPA via nginx, AWS node-03)"
+ 
+  coinops-proxy:
+    url: "http://18.198.197.77:8080"
+    health_endpoint: "/health"
+    port: 8080
+    depends_on:
+      - coinops-rabbitmq
+    description: "CoinOps proxy — market data fetcher and queue publisher (AWS node-02)"
+ 
+  coinops-history-api:
+    url: "http://18.198.197.77:8000"
+    health_endpoint: "/health"
+    port: 8000
+    depends_on:
+      - coinops-rabbitmq
+    description: "CoinOps history API — historical market data REST API (AWS node-01)"
+ 
+  coinops-history-consumer:
+    url: "http://18.198.197.77:5672"
+    health_endpoint: null
+    port: 5672
+    health_check_method: "tcp"
+    depends_on:
+      - coinops-rabbitmq
+    description: "CoinOps history consumer — queue consumer persisting to RDS (AWS node-01)"
+ 
+  coinops-rabbitmq:
+    url: "http://18.198.197.77:5672"
+    health_endpoint: null
+    port: 5672
+    health_check_method: "tcp"
     depends_on: []
-    description: "Coin-Ops backend API — market data aggregation and runtime status"
-
+    description: "CoinOps RabbitMQ — message broker for async pipeline (AWS node-01)"
+    metrics:
+      - queue_depth
+      - consumers_count
+      - publish_rate
+ 
 # Fault propagation chains (precomputed for LLM context)
-# These help the diagnostic engine quickly identify cascading failures
 fault_chains:
   database_down:
     root: database
@@ -88,7 +128,7 @@ fault_chains:
       - history-api
       - web-ui
     description: "DB failure breaks all data persistence and retrieval"
-
+ 
   rabbitmq_down:
     root: rabbitmq
     affected:
@@ -96,15 +136,24 @@ fault_chains:
       - history-consumer
       - web-ui
     description: "Queue failure breaks async data pipeline"
-
+ 
   proxy_down:
     root: api-proxy
     affected:
       - web-ui
     description: "Proxy failure means no live data for frontend"
-
-  coinops_api_down:
-    root: coinops-api
+ 
+  coinops_rabbitmq_down:
+    root: coinops-rabbitmq
+    affected:
+      - coinops-proxy
+      - coinops-history-consumer
+      - coinops-history-api
+      - coinops-ui
+    description: "CoinOps queue failure breaks entire async data pipeline on AWS"
+ 
+  coinops_proxy_down:
+    root: coinops-proxy
     affected:
       - coinops-ui
-    description: "Coin-Ops API failure breaks frontend data display"
+    description: "CoinOps proxy failure breaks frontend data display"
