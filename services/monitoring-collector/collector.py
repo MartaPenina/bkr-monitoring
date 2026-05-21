@@ -35,7 +35,6 @@ POLL_INTERVAL = int(os.environ.get("POLL_INTERVAL", "30"))
 PORT = int(os.environ.get("PORT", "8085"))
 N8N_WEBHOOK_URL = os.environ.get("N8N_WEBHOOK_URL", "")
 
-# Anomaly thresholds
 RESPONSE_TIME_THRESHOLD = float(os.environ.get("RESPONSE_TIME_THRESHOLD", "5.0"))
 ERROR_RATE_THRESHOLD = float(os.environ.get("ERROR_RATE_THRESHOLD", "0.5"))
 CONSECUTIVE_FAILURES_THRESHOLD = int(os.environ.get("CONSECUTIVE_FAILURES_THRESHOLD", "2"))
@@ -65,7 +64,6 @@ SERVICE_MAP = load_service_map()
 SERVICES = SERVICE_MAP["services"]
 
 # ── State tracking ──────────────────────────────────────────────────────────
-# Track consecutive failures per service for anomaly detection
 _service_state = {}
 _state_lock = threading.Lock()
 _start_time = time.time()
@@ -196,12 +194,10 @@ def update_incident_diagnosis(incident_id, diagnosis):
 
 # ── Health checking ─────────────────────────────────────────────────────────
 def check_service_health(service_name: str, service_config: dict) -> dict:
-    """Poll a single service's health endpoint and return result."""
     url = service_config["url"]
     health_ep = service_config.get("health_endpoint")
 
     if not health_ep:
-        # TCP-only check (e.g., database)
         return {"status": "healthy", "response_time": 0, "http_status": None, "details": {}}
 
     check_url = f"{url}{health_ep}"
@@ -224,34 +220,15 @@ def check_service_health(service_name: str, service_config: dict) -> dict:
             "error": None,
         }
     except requests.exceptions.ConnectionError:
-        return {
-            "status": "down",
-            "response_time": time.time() - start,
-            "http_status": None,
-            "details": {},
-            "error": "Connection refused",
-        }
+        return {"status": "down", "response_time": time.time() - start, "http_status": None, "details": {}, "error": "Connection refused"}
     except requests.exceptions.Timeout:
-        return {
-            "status": "timeout",
-            "response_time": 5.0,
-            "http_status": None,
-            "details": {},
-            "error": "Request timeout (5s)",
-        }
+        return {"status": "timeout", "response_time": 5.0, "http_status": None, "details": {}, "error": "Request timeout (5s)"}
     except Exception as e:
-        return {
-            "status": "error",
-            "response_time": time.time() - start,
-            "http_status": None,
-            "details": {},
-            "error": str(e),
-        }
+        return {"status": "error", "response_time": time.time() - start, "http_status": None, "details": {}, "error": str(e)}
 
 
 # ── Anomaly detection ───────────────────────────────────────────────────────
 def detect_anomaly(service_name: str, result: dict) -> dict | None:
-    """Check if the health result constitutes an anomaly. Returns anomaly dict or None."""
     with _state_lock:
         state = _service_state[service_name]
 
@@ -269,7 +246,6 @@ def detect_anomaly(service_name: str, result: dict) -> dict | None:
                     "last_error": state["last_error"],
                 }
         else:
-            # Service recovered
             was_down = state["consecutive_failures"] >= CONSECUTIVE_FAILURES_THRESHOLD
             state["consecutive_failures"] = 0
             state["status"] = "healthy"
@@ -282,7 +258,6 @@ def detect_anomaly(service_name: str, result: dict) -> dict | None:
         state["last_response_time"] = result.get("response_time")
         state["last_check"] = datetime.now(timezone.utc).isoformat()
 
-        # High latency check
         if result.get("response_time") and result["response_time"] > RESPONSE_TIME_THRESHOLD:
             return {
                 "type": "high_latency",
@@ -294,16 +269,14 @@ def detect_anomaly(service_name: str, result: dict) -> dict | None:
     return None
 
 
-# ── Trigger diagnostic engine ───────────────────────────────────────────────
+# ── Helpers ─────────────────────────────────────────────────────────────────
 def get_recent_metrics(service_name: str, limit: int = 10) -> list:
     try:
         conn = get_db()
         with conn.cursor() as cur:
             cur.execute(
-                """SELECT service_name, status, response_time, http_status, error_message,
-                          collected_at
-                   FROM service_metrics
-                   WHERE service_name = %s
+                """SELECT service_name, status, response_time, http_status, error_message, collected_at
+                   FROM service_metrics WHERE service_name = %s
                    ORDER BY collected_at DESC LIMIT %s""",
                 (service_name, limit),
             )
@@ -333,61 +306,47 @@ def get_all_service_states() -> dict:
         return result
 
 
-def trigger_diagnosis(service_name: str, anomaly: dict, incident_id: int):
-    """Call the diagnostic engine API with incident context."""
-    # Build context for LLM
-    affected_deps = []
+def build_diagnosis_context(service_name: str, anomaly: dict) -> dict:
+    """Build full context dict for the diagnostic engine."""
     svc_config = SERVICES.get(service_name, {})
+    affected_deps = []
     for dep_name in svc_config.get("depends_on", []):
-        dep_metrics = get_recent_metrics(dep_name, limit=5)
-        affected_deps.append({
-            "service": dep_name,
-            "recent_metrics": dep_metrics,
-        })
+        affected_deps.append({"service": dep_name, "recent_metrics": get_recent_metrics(dep_name, 5)})
 
-    # Find reverse dependencies (who depends on the broken service)
-    reverse_deps = []
-    for name, cfg in SERVICES.items():
-        if service_name in cfg.get("depends_on", []):
-            reverse_deps.append(name)
+    reverse_deps = [n for n, cfg in SERVICES.items() if service_name in cfg.get("depends_on", [])]
 
-    context = {
-        "incident_id": incident_id,
+    return {
         "service_name": service_name,
         "anomaly": anomaly,
-        "recent_metrics": get_recent_metrics(service_name, limit=10),
+        "recent_metrics": get_recent_metrics(service_name, 10),
         "dependency_metrics": affected_deps,
         "reverse_dependencies": reverse_deps,
         "all_service_states": get_all_service_states(),
         "service_map": {
-            name: {
-                "depends_on": cfg.get("depends_on", []),
-                "description": cfg.get("description", ""),
-            }
+            name: {"depends_on": cfg.get("depends_on", []), "description": cfg.get("description", "")}
             for name, cfg in SERVICES.items()
         },
     }
 
+
+# ── Trigger diagnostic engine ───────────────────────────────────────────────
+def trigger_diagnosis(service_name: str, anomaly: dict, incident_id: int):
+    context = build_diagnosis_context(service_name, anomaly)
+    context["incident_id"] = incident_id
     try:
-        resp = requests.post(
-            f"{DIAGNOSTIC_ENGINE_URL}/diagnose",
-            json=context,
-            timeout=60,
-        )
+        resp = requests.post(f"{DIAGNOSTIC_ENGINE_URL}/diagnose", json=context, timeout=60)
         if resp.status_code == 200:
             diagnosis = resp.json()
             update_incident_diagnosis(incident_id, diagnosis)
-            log_json("info", "Diagnosis received",
-                     service=service_name,
+            log_json("info", "Diagnosis received", service=service_name,
                      root_cause=diagnosis.get("root_cause", "unknown"))
         else:
-            log_json("error", "Diagnostic engine error",
-                     status=resp.status_code, body=resp.text[:200])
+            log_json("error", "Diagnostic engine error", status=resp.status_code, body=resp.text[:200])
     except Exception as e:
         log_json("error", "Cannot reach diagnostic engine", error=str(e))
 
+
 def notify_n8n(service_name: str, anomaly: dict, diagnosis: dict = None):
-    """Send fault alert to n8n webhook for Telegram notification."""
     if not N8N_WEBHOOK_URL:
         return
     try:
@@ -404,6 +363,7 @@ def notify_n8n(service_name: str, anomaly: dict, diagnosis: dict = None):
     except Exception as e:
         log_json("warning", "Failed to notify n8n", error=str(e))
 
+
 # ── Main polling loop ───────────────────────────────────────────────────────
 def poll_all_services():
     global _total_polls
@@ -413,7 +373,6 @@ def poll_all_services():
     for svc_name, svc_config in SERVICES.items():
         result = check_service_health(svc_name, svc_config)
 
-        # Store metric
         store_metric(
             service_name=svc_name,
             status=result["status"],
@@ -423,27 +382,21 @@ def poll_all_services():
             details=result.get("details"),
         )
 
-        # Check for anomaly
         anomaly = detect_anomaly(svc_name, result)
         if anomaly:
-            log_json("warning", "Anomaly detected",
-                     service=svc_name, anomaly_type=anomaly["type"],
-                     severity=anomaly["severity"])
+            log_json("warning", "Anomaly detected", service=svc_name,
+                     anomaly_type=anomaly["type"], severity=anomaly["severity"])
 
             incident_id = create_incident(
                 service_name=svc_name,
                 incident_type=anomaly["type"],
                 severity=anomaly["severity"],
                 description=f"{anomaly['type']} on {svc_name}: {anomaly}",
-                metrics_context={
-                    "anomaly": anomaly,
-                    "health_result": result,
-                },
+                metrics_context={"anomaly": anomaly, "health_result": result},
             )
 
             if incident_id:
                 notify_n8n(svc_name, anomaly)
-                # Trigger LLM diagnosis in background
                 threading.Thread(
                     target=trigger_diagnosis,
                     args=(svc_name, anomaly, incident_id),
@@ -478,29 +431,24 @@ def health():
 
 @flask_app.route("/api/services")
 def api_services():
-    """Return current state of all monitored services."""
     return jsonify(get_all_service_states())
 
 
 @flask_app.route("/api/metrics/<service_name>")
 def api_metrics(service_name):
-    """Return recent metrics for a service."""
-    limit = int(requests.args.get("limit", 50)) if hasattr(requests, 'args') else 50
     metrics = get_recent_metrics(service_name, limit=50)
     return jsonify(metrics)
 
 
 @flask_app.route("/api/incidents")
 def api_incidents():
-    """Return recent incidents."""
     try:
         conn = get_db()
         with conn.cursor() as cur:
             cur.execute(
                 """SELECT id, service_name, incident_type, severity, description,
                           diagnosis, resolved_at, created_at
-                   FROM incidents
-                   ORDER BY created_at DESC LIMIT 50""",
+                   FROM incidents ORDER BY created_at DESC LIMIT 50""",
             )
             rows = cur.fetchall()
         conn.close()
@@ -518,8 +466,39 @@ def api_incidents():
 
 @flask_app.route("/api/service-map")
 def api_service_map():
-    """Return the service dependency map."""
     return jsonify(SERVICE_MAP)
+
+
+@flask_app.route("/api/incidents/<int:incident_id>/diagnose", methods=["POST"])
+def api_rediagnose(incident_id):
+    """Force re-diagnosis of an existing incident, bypassing rate limit."""
+    try:
+        conn = get_db()
+        with conn.cursor() as cur:
+            cur.execute("SELECT * FROM incidents WHERE id = %s", (incident_id,))
+            row = cur.fetchone()
+        conn.close()
+        if not row:
+            return jsonify({"error": "Incident not found"}), 404
+
+        service_name = row["service_name"]
+        stored = row.get("metrics_context") or {}
+        anomaly = stored.get("anomaly", {"type": row["incident_type"], "severity": row["severity"]})
+
+        context = build_diagnosis_context(service_name, anomaly)
+        context["incident_id"] = incident_id
+
+        resp = requests.post(f"{DIAGNOSTIC_ENGINE_URL}/diagnose/force", json=context, timeout=90)
+        if resp.status_code == 200:
+            diagnosis = resp.json()
+            update_incident_diagnosis(incident_id, diagnosis)
+            log_json("info", "Force re-diagnosis complete", service=service_name)
+            return jsonify(diagnosis)
+        else:
+            return jsonify({"error": "Diagnostic engine error", "status": resp.status_code}), 502
+    except Exception as e:
+        log_json("error", "Re-diagnosis failed", error=str(e))
+        return jsonify({"error": str(e)}), 500
 
 
 # ── Entry point ─────────────────────────────────────────────────────────────
@@ -529,9 +508,7 @@ if __name__ == "__main__":
 
     init_db()
 
-    # Start polling in background
     poller = threading.Thread(target=polling_loop, daemon=True)
     poller.start()
 
-    # Run HTTP API
     flask_app.run(host="0.0.0.0", port=PORT)

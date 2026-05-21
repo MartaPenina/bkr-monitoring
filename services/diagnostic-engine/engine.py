@@ -21,7 +21,7 @@ from flask import Flask, jsonify, request
 
 # ── Config ──────────────────────────────────────────────────────────────────
 ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
-MODEL = os.environ.get("CLAUDE_MODEL", "claude-sonnet-4-5")
+MODEL = os.environ.get("CLAUDE_MODEL", "anthropic/claude-3-haiku")
 PORT = int(os.environ.get("PORT", "8090"))
 MAX_TOKENS = int(os.environ.get("MAX_TOKENS", "2048"))
 
@@ -118,7 +118,7 @@ def build_prompt(context: dict) -> str:
 
 # ── Claude API call ─────────────────────────────────────────────────────────
 def call_claude_api(prompt: str) -> dict:
-    """Send structured prompt to OpenRouter/Claude API and parse JSON response."""
+    """Send structured prompt to OpenRouter API and parse JSON response."""
     global _diagnosis_count
     if not ANTHROPIC_API_KEY:
         log_json("warning", "No ANTHROPIC_API_KEY set, using fallback")
@@ -163,10 +163,7 @@ def call_claude_api(prompt: str) -> dict:
 
 # ── Fallback heuristic diagnosis ────────────────────────────────────────────
 def heuristic_diagnosis(context: dict) -> dict:
-    """
-    Rule-based fallback when LLM is unavailable.
-    Analyzes dependency chains and basic patterns.
-    """
+    """Rule-based fallback when LLM is unavailable."""
     global _fallback_count
     _fallback_count += 1
 
@@ -178,7 +175,6 @@ def heuristic_diagnosis(context: dict) -> dict:
     anomaly_type = anomaly.get("type", "unknown")
     severity = anomaly.get("severity", "warning")
 
-    # Check if dependencies are also down
     svc_deps = service_map.get(service_name, {}).get("depends_on", [])
     down_deps = []
     for dep in svc_deps:
@@ -186,11 +182,8 @@ def heuristic_diagnosis(context: dict) -> dict:
         if dep_state.get("status") in ("down", "timeout", "error", "unhealthy"):
             down_deps.append(dep)
 
-    # Determine root cause
     if down_deps:
-        # Cascading failure — a dependency is down
         root = down_deps[0]
-        # Check if that dependency also has failed deps
         root_deps = service_map.get(root, {}).get("depends_on", [])
         deeper_root = None
         for rd in root_deps:
@@ -205,7 +198,6 @@ def heuristic_diagnosis(context: dict) -> dict:
             fault_chain.append(root)
         fault_chain.append(service_name)
 
-        # Find all affected
         affected = set()
         for name, cfg in service_map.items():
             if actual_root in cfg.get("depends_on", []):
@@ -223,44 +215,22 @@ def heuristic_diagnosis(context: dict) -> dict:
             "predicted_impact": [n for n in service_map if service_name in service_map[n].get("depends_on", [])],
             "severity": "critical" if len(down_deps) > 1 else severity,
             "recommendations": [
-                {
-                    "action": f"Check and restart {actual_root}",
-                    "priority": "immediate",
-                    "command": f"docker restart {actual_root}",
-                },
-                {
-                    "action": f"Check logs of {actual_root} for error details",
-                    "priority": "immediate",
-                    "command": f"docker logs --tail 50 {actual_root}",
-                },
-                {
-                    "action": "Verify network connectivity between services",
-                    "priority": "short-term",
-                    "command": None,
-                },
+                {"action": f"Check and restart {actual_root}", "priority": "immediate", "command": f"docker restart {actual_root}"},
+                {"action": f"Check logs of {actual_root} for error details", "priority": "immediate", "command": f"docker logs --tail 50 {actual_root}"},
+                {"action": "Verify network connectivity between services", "priority": "short-term", "command": None},
             ],
             "similar_patterns": "Cascading failure due to dependency unavailability",
             "diagnosis_source": "heuristic_fallback",
             "diagnosed_at": datetime.now(timezone.utc).isoformat(),
         }
     else:
-        # Isolated failure
         recommendations = [
-            {
-                "action": f"Restart {service_name}",
-                "priority": "immediate",
-                "command": f"docker restart {service_name}",
-            },
-            {
-                "action": f"Check {service_name} logs",
-                "priority": "immediate",
-                "command": f"docker logs --tail 100 {service_name}",
-            },
+            {"action": f"Restart {service_name}", "priority": "immediate", "command": f"docker restart {service_name}"},
+            {"action": f"Check {service_name} logs", "priority": "immediate", "command": f"docker logs --tail 100 {service_name}"},
         ]
-
         if anomaly_type == "high_latency":
             recommendations.append({
-                "action": f"Check resource usage (CPU/memory) on {service_name}",
+                "action": f"Check resource usage on {service_name}",
                 "priority": "short-term",
                 "command": f"docker stats {service_name} --no-stream",
             })
@@ -299,18 +269,13 @@ def health():
 
 @app.route("/diagnose", methods=["POST"])
 def diagnose():
-    """
-    Main diagnostic endpoint.
-    Receives incident context from monitoring collector,
-    runs LLM diagnosis (or fallback), returns structured result.
-    """
+    """Main diagnostic endpoint with rate limiting."""
     context = request.json
     if not context:
         return jsonify({"error": "No context provided"}), 400
 
     service_name = context.get("service_name", "unknown")
 
-    # Rate limiting per service
     now = time.time()
     last = _last_diagnosis_time.get(service_name, 0)
     if now - last < MIN_DIAGNOSIS_INTERVAL:
@@ -324,12 +289,10 @@ def diagnose():
     log_json("info", "Diagnosis requested", service=service_name,
              anomaly_type=context.get("anomaly", {}).get("type"))
 
-    # Build prompt and try Claude API
     prompt = build_prompt(context)
     diagnosis = call_claude_api(prompt)
 
     if diagnosis is None:
-        # Fallback to heuristics
         log_json("info", "Using heuristic fallback", service=service_name)
         diagnosis = heuristic_diagnosis(context)
 
@@ -341,9 +304,34 @@ def diagnose():
     return jsonify(diagnosis)
 
 
+@app.route("/diagnose/force", methods=["POST"])
+def diagnose_force():
+    """Force diagnosis bypassing rate limit — used by manual 'Run LLM Diagnosis' button."""
+    context = request.json
+    if not context:
+        return jsonify({"error": "No context provided"}), 400
+
+    service_name = context.get("service_name", "unknown")
+    log_json("info", "Force diagnosis requested", service=service_name)
+
+    prompt = build_prompt(context)
+    diagnosis = call_claude_api(prompt)
+
+    if diagnosis is None:
+        log_json("info", "Using heuristic fallback for force diagnosis", service=service_name)
+        diagnosis = heuristic_diagnosis(context)
+
+    log_json("info", "Force diagnosis complete",
+             service=service_name,
+             source=diagnosis.get("diagnosis_source"),
+             root_cause=diagnosis.get("root_cause", "")[:100])
+
+    return jsonify(diagnosis)
+
+
 @app.route("/diagnose/test", methods=["POST"])
 def diagnose_test():
-    """Test endpoint — always uses heuristic fallback for testing without API key."""
+    """Test endpoint — always uses heuristic fallback."""
     context = request.json
     if not context:
         return jsonify({"error": "No context provided"}), 400

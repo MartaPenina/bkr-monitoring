@@ -243,6 +243,31 @@
     .rec-action { font-size: 12px; font-weight: 500; }
     .rec-cmd { font-family: var(--mono); font-size: 11px; color: #a78bfa; background: rgba(99,102,241,0.1); padding: 4px 8px; border-radius: 5px; margin-top: 4px; display: inline-block; }
  
+    /* ── Run LLM Diagnosis button ── */
+    .btn-diagnose {
+      margin-top: 10px;
+      padding: 7px 16px;
+      background: rgba(99,102,241,0.15);
+      border: 1px solid rgba(99,102,241,0.3);
+      color: #818cf8;
+      border-radius: 8px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .btn-diagnose:hover:not(:disabled) {
+      background: rgba(99,102,241,0.28);
+      border-color: rgba(99,102,241,0.5);
+      color: #a5b4fc;
+    }
+    .btn-diagnose:disabled { cursor: not-allowed; opacity: 0.6; }
+    .btn-diagnose.loading { animation: diagPulse 1.2s ease-in-out infinite; }
+    @keyframes diagPulse { 0%,100%{opacity:1} 50%{opacity:0.5} }
+ 
     /* ── Metrics charts ── */
     .metrics-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
     .chart-card {
@@ -278,7 +303,6 @@
     .legend-item { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--muted); }
     .legend-dot { width: 8px; height: 8px; border-radius: 50%; }
  
-    /* Fault chains grid */
     .fault-chains-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
     .fc-card {
       background: rgba(255,255,255,0.025);
@@ -566,7 +590,6 @@ async function refreshAll() {
     if (map)  _serviceMap = map;
     if (hist) _metricsHistory = hist;
  
-    // LLM status
     const llmDot = document.getElementById('llmDot');
     const llmTxt = document.getElementById('llmStatusText');
     if (eng?.llm_available) {
@@ -630,12 +653,11 @@ function groupIncidents(incidents) {
       map[key] = { ...inc, count: 1 };
     } else {
       map[key].count++;
-      // Keep latest timestamp
       if ((inc.created_at || '') > (map[key].created_at || '')) {
         map[key].created_at = inc.created_at;
-        // Prefer Claude diagnosis over heuristic
         if (inc.diagnosis?.diagnosis_source === 'claude_api') {
           map[key].diagnosis = inc.diagnosis;
+          map[key].id = inc.id;
         }
       }
     }
@@ -729,7 +751,7 @@ function renderIncidentList(id, limit, grouped) {
   const el = document.getElementById(id);
   if (!el) return;
  
-  const all = grouped ? groupIncidents(_incidents) : groupIncidents(_incidents);
+  const all = groupIncidents(_incidents);
   const items = limit ? all.slice(0, limit) : all;
  
   if (!items.length) { el.innerHTML = '<div class="empty">No incidents recorded</div>'; return; }
@@ -744,6 +766,11 @@ function renderIncidentList(id, limit, grouped) {
     if (ci > -1) desc = desc.substring(0, ci);
     const incType = (inc.incident_type || '').replace(/_/g, ' ');
  
+    // Show Run LLM Diagnosis button only if no Claude diagnosis yet
+    const diagButton = !isLLM && inc.id
+      ? `<button class="btn-diagnose" id="diagBtn-${id}-${idx}" onclick="runDiagnosis(${inc.id},'${id}',${idx},event)">🧠 Run LLM Diagnosis</button>`
+      : '';
+ 
     return `<div class="incident ${inc.severity}" onclick="toggleDiag('${id}',${idx})">
       <div class="inc-header">
         <div class="inc-left">
@@ -757,12 +784,16 @@ function renderIncidentList(id, limit, grouped) {
       </div>
       <div class="inc-type">${incType}${desc ? ' — ' + desc.substring(0, 100) : ''}</div>
       ${diag ? renderDiag(`${id}-${idx}`, diag) : '<div style="font-size:11px;color:var(--muted);margin-top:4px">No diagnosis yet</div>'}
+      ${diagButton}
     </div>`;
   }).join('');
 }
  
 function renderDiag(uid, diag) {
   const isLLM = diag.diagnosis_source === 'claude_api';
+  // Auto-open Claude AI diagnoses
+  const openClass = isLLM ? 'open' : '';
+ 
   const chain = (diag.fault_chain || []).map((n, i) =>
     (i===0 ? '<span class="chain-node root">'+n+'</span>' : '<span class="chain-node">'+n+'</span>') +
     (i < (diag.fault_chain.length-1) ? '<span class="chain-arrow">→</span>' : '')
@@ -771,7 +802,7 @@ function renderDiag(uid, diag) {
     const pc = r.priority === 'immediate' ? 'pri-immediate' : r.priority === 'short-term' ? 'pri-short-term' : 'pri-long-term';
     return '<div class="rec-item"><div class="rec-header"><div class="rec-priority '+pc+'"></div><span class="rec-action">'+(r.action||'')+'</span></div>'+(r.command ? '<div class="rec-cmd">'+r.command+'</div>' : '')+'</div>';
   }).join('');
-
+ 
   let fp = '';
   if (diag.failure_prediction) {
     const fp_data = diag.failure_prediction;
@@ -784,8 +815,8 @@ function renderDiag(uid, diag) {
       + (fp_data.cascade_risk ? '<div style="margin-top:6px"><span class="badge '+riskClass+'">cascade risk: '+fp_data.cascade_risk+'</span></div>' : '')
       + '</div>';
   }
-
-  return '<div class="diag-panel" id="diag-'+uid+'">'
+ 
+  return '<div class="diag-panel ' + openClass + '" id="diag-'+uid+'">'
     + '<div class="diag-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg> '+(isLLM ? 'Claude AI Diagnosis' : 'Heuristic Diagnosis')+'</div>'
     + (diag.root_cause ? '<div class="diag-row"><div class="diag-row-label">Root Cause</div><div class="diag-row-value">'+diag.root_cause+'</div></div>' : '')
     + (chain ? '<div class="diag-row"><div class="diag-row-label">Fault Chain</div><div class="fault-chain">'+chain+'</div></div>' : '')
@@ -815,18 +846,57 @@ function updateIncidentBadge() {
   }
 }
  
+// ── Run LLM Diagnosis ──────────────────────────────────────────────────────
+async function runDiagnosis(incidentId, listId, idx, event) {
+  event.stopPropagation();
+  const btn = document.getElementById(`diagBtn-${listId}-${idx}`);
+  if (!btn) return;
+ 
+  btn.textContent = '⏳ Analyzing...';
+  btn.disabled = true;
+  btn.classList.add('loading');
+ 
+  try {
+    const resp = await fetch(`/api/incidents/${incidentId}/diagnose`, { method: 'POST' });
+    if (!resp.ok) throw new Error('Engine error: ' + resp.status);
+ 
+    // Refresh incidents and re-render
+    const inc = await fetchJSON('/api/incidents');
+    if (inc) _incidents = inc;
+    renderAll();
+ 
+    // Auto-open the diagnosis panel after re-render
+    setTimeout(() => {
+      const panel = document.getElementById(`diag-${listId}-${idx}`);
+      if (panel) panel.classList.add('open');
+      // Scroll to it
+      panel?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }, 150);
+ 
+  } catch (e) {
+    btn.textContent = '❌ Failed — retry';
+    btn.disabled = false;
+    btn.classList.remove('loading');
+    btn.style.color = 'var(--no)';
+    btn.style.borderColor = 'rgba(239,68,68,0.3)';
+    setTimeout(() => {
+      btn.textContent = '🧠 Run LLM Diagnosis';
+      btn.style.color = '';
+      btn.style.borderColor = '';
+    }, 4000);
+  }
+}
+ 
 // ── Metrics charts ─────────────────────────────────────────────────────────
 function renderMetrics() {
   const grid = document.getElementById('metricsGrid');
   if (!grid) return;
  
-  // Group history by service
   const byService = {};
   for (const row of _metricsHistory) {
     if (!byService[row.service_name]) byService[row.service_name] = [];
     byService[row.service_name].push(row);
   }
-  // Ensure all known services appear
   for (const name of Object.keys(_services)) {
     if (!byService[name]) byService[name] = [];
   }
@@ -851,7 +921,6 @@ function renderMetrics() {
     </div>`;
   }).join('');
  
-  // Render each chart
   Chart.defaults.color = '#71717a';
   for (const [name, rows] of Object.entries(byService)) {
     const uid = name.replace(/[^a-z0-9]/gi, '_');
@@ -867,7 +936,6 @@ function renderMetrics() {
     const data = sorted.map(r => r.response_time != null ? Math.round(parseFloat(r.response_time) * 1000) : null);
     const statuses = sorted.map(r => statusClass(r.status));
  
-    // Current value display
     const latest = data.filter(d => d != null).at(-1);
     const curEl = document.getElementById('curMs-' + uid);
     if (curEl && latest != null) {
@@ -887,8 +955,7 @@ function renderMetrics() {
       data: {
         labels,
         datasets: [{
-          label: 'ms',
-          data,
+          label: 'ms', data,
           borderColor: 'rgba(99,102,241,0.7)',
           backgroundColor: 'rgba(99,102,241,0.06)',
           borderWidth: 1.5,
@@ -950,7 +1017,6 @@ function renderDepGraph() {
     return STATUS_COLORS[s] || '#71717a';
   };
  
-  // Depth-based hierarchical layout
   const deps = _serviceMap.services;
   const depth = {};
   function calcDepth(name, visited = new Set()) {
@@ -969,7 +1035,7 @@ function renderDepGraph() {
     if (!layers[d]) layers[d] = [];
     layers[d].push(s);
   }
-  const layerKeys = Object.keys(layers).map(Number).sort((a,b) => b - a); // deepest at top
+  const layerKeys = Object.keys(layers).map(Number).sort((a,b) => b - a);
  
   const W = canvas.width, H = canvas.height;
   const positions = {};
@@ -981,65 +1047,60 @@ function renderDepGraph() {
     });
   });
  
-  // Edges
-  ctx.setLineDash([4, 4]);
+  // Edges — red if both nodes are down
   for (const [name, cfg] of Object.entries(deps)) {
     for (const dep of (cfg.depends_on || [])) {
       if (!positions[dep] || !positions[name]) continue;
       const from = positions[dep], to = positions[name];
+      const fromDown = statusClass(_services[dep]?.status) === 'down';
+      const toDown = statusClass(_services[name]?.status) === 'down';
+      const edgeColor = (fromDown || toDown) ? 'rgba(239,68,68,0.5)' : 'rgba(99,102,241,0.25)';
+      const edgeColorEnd = (fromDown || toDown) ? 'rgba(239,68,68,0.2)' : 'rgba(99,102,241,0.08)';
+ 
+      ctx.setLineDash([4, 4]);
       const grad = ctx.createLinearGradient(from.x, from.y, to.x, to.y);
-      grad.addColorStop(0, 'rgba(99,102,241,0.25)');
-      grad.addColorStop(1, 'rgba(99,102,241,0.08)');
+      grad.addColorStop(0, edgeColor);
+      grad.addColorStop(1, edgeColorEnd);
       ctx.beginPath();
       ctx.moveTo(from.x, from.y);
       const mx = (from.x + to.x) / 2, my = (from.y + to.y) / 2 - 15;
       ctx.quadraticCurveTo(mx, my, to.x, to.y);
       ctx.strokeStyle = grad;
-      ctx.lineWidth = 1.5;
+      ctx.lineWidth = (fromDown || toDown) ? 2 : 1.5;
       ctx.stroke();
-      // arrowhead
       ctx.setLineDash([]);
       const angle = Math.atan2(to.y - my, to.x - mx);
       ctx.beginPath();
       ctx.moveTo(to.x - 10 * Math.cos(angle - 0.35), to.y - 10 * Math.sin(angle - 0.35));
       ctx.lineTo(to.x - 3, to.y - 3);
       ctx.lineTo(to.x - 10 * Math.cos(angle + 0.35), to.y - 10 * Math.sin(angle + 0.35));
-      ctx.strokeStyle = 'rgba(99,102,241,0.4)'; ctx.lineWidth = 1.5;
+      ctx.strokeStyle = (fromDown || toDown) ? 'rgba(239,68,68,0.6)' : 'rgba(99,102,241,0.4)';
+      ctx.lineWidth = 1.5;
       ctx.stroke();
       ctx.setLineDash([4, 4]);
     }
   }
   ctx.setLineDash([]);
  
-  // Nodes
   const R = 24;
   for (const [name, pos] of Object.entries(positions)) {
     const color = getColor(name);
     const { x, y } = pos;
- 
-    // Glow
     const glow = ctx.createRadialGradient(x, y, 0, x, y, R * 2);
     glow.addColorStop(0, color + '28'); glow.addColorStop(1, 'transparent');
     ctx.beginPath(); ctx.arc(x, y, R * 2, 0, Math.PI * 2);
     ctx.fillStyle = glow; ctx.fill();
- 
-    // Ring
     ctx.beginPath(); ctx.arc(x, y, R, 0, Math.PI * 2);
     ctx.fillStyle = '#121215'; ctx.fill();
     ctx.strokeStyle = color; ctx.lineWidth = 2; ctx.stroke();
- 
-    // Center dot
     ctx.beginPath(); ctx.arc(x, y, 5, 0, Math.PI * 2);
     ctx.fillStyle = color; ctx.fill();
- 
-    // Label
     ctx.fillStyle = '#a1a1aa';
     ctx.font = '500 11px Inter, system-ui';
     ctx.textAlign = 'center'; ctx.textBaseline = 'top';
     ctx.fillText(name, x, y + R + 6);
   }
  
-  // Render fault chains
   renderFaultChains();
 }
  

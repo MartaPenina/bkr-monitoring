@@ -5,31 +5,31 @@ import json
 import os
 import time
 from datetime import datetime, timezone
- 
+
 import psycopg2
 import psycopg2.extras
 import requests
 from flask import Flask, jsonify, render_template, request
- 
+
 DATABASE_URL = os.environ.get("DATABASE_URL", "postgresql://monitor:monitor@postgres:5432/monitor")
 COLLECTOR_URL = os.environ.get("COLLECTOR_URL", "http://monitoring-collector:8085")
 DIAGNOSTIC_URL = os.environ.get("DIAGNOSTIC_URL", "http://diagnostic-engine:8090")
 PORT = int(os.environ.get("PORT", "5000"))
- 
+
 app = Flask(__name__)
 _start_time = time.time()
- 
- 
+
+
 def log_json(level: str, message: str, **extra):
     entry = {"timestamp": datetime.now(timezone.utc).isoformat(), "level": level,
              "service_name": "dashboard", "message": message, **extra}
     print(json.dumps(entry), flush=True)
- 
- 
+
+
 def get_db():
     return psycopg2.connect(DATABASE_URL, cursor_factory=psycopg2.extras.RealDictCursor)
- 
- 
+
+
 def serialize_rows(rows):
     result = []
     for r in rows:
@@ -39,19 +39,19 @@ def serialize_rows(rows):
                 d[k] = v.isoformat()
         result.append(d)
     return result
- 
- 
+
+
 @app.route("/")
 def index():
     return render_template("index.html")
- 
- 
+
+
 @app.route("/health")
 def health():
     return jsonify({"status": "healthy", "service": "dashboard",
                     "uptime_seconds": round(time.time() - _start_time, 1)})
- 
- 
+
+
 @app.route("/api/services")
 def api_services():
     try:
@@ -59,8 +59,8 @@ def api_services():
         return jsonify(resp.json())
     except Exception as e:
         return jsonify({"error": str(e)}), 502
- 
- 
+
+
 @app.route("/api/service-map")
 def api_service_map():
     try:
@@ -68,8 +68,8 @@ def api_service_map():
         return jsonify(resp.json())
     except Exception as e:
         return jsonify({"error": str(e)}), 502
- 
- 
+
+
 @app.route("/api/incidents")
 def api_incidents():
     try:
@@ -83,8 +83,8 @@ def api_incidents():
         return jsonify(serialize_rows(rows))
     except Exception as e:
         return jsonify({"error": str(e)}), 500
- 
- 
+
+
 @app.route("/api/incidents/<int:incident_id>")
 def api_incident_detail(incident_id):
     try:
@@ -98,8 +98,21 @@ def api_incident_detail(incident_id):
         return jsonify(serialize_rows([row])[0])
     except Exception as e:
         return jsonify({"error": str(e)}), 500
- 
- 
+
+
+@app.route("/api/incidents/<int:incident_id>/diagnose", methods=["POST"])
+def api_diagnose_incident(incident_id):
+    """Proxy manual re-diagnosis request to monitoring collector."""
+    try:
+        resp = requests.post(
+            f"{COLLECTOR_URL}/api/incidents/{incident_id}/diagnose",
+            timeout=90,
+        )
+        return jsonify(resp.json()), resp.status_code
+    except Exception as e:
+        return jsonify({"error": str(e)}), 502
+
+
 @app.route("/api/metrics/<service_name>")
 def api_metrics(service_name):
     limit = request.args.get("limit", 60, type=int)
@@ -115,11 +128,10 @@ def api_metrics(service_name):
         return jsonify(serialize_rows(rows))
     except Exception as e:
         return jsonify({"error": str(e)}), 500
- 
- 
+
+
 @app.route("/api/metrics/history")
 def api_metrics_history():
-    """Last N data points for ALL services — used by the Metrics tab charts."""
     limit = min(request.args.get("limit", 40, type=int), 200)
     if not DATABASE_URL:
         return jsonify([])
@@ -141,8 +153,8 @@ def api_metrics_history():
     except Exception as e:
         log_json("error", "metrics/history failed", error=str(e))
         return jsonify([])
- 
- 
+
+
 @app.route("/api/diagnostic-engine/health")
 def api_engine_health():
     try:
@@ -150,8 +162,8 @@ def api_engine_health():
         return jsonify(resp.json())
     except Exception as e:
         return jsonify({"error": str(e), "status": "unavailable"}), 502
- 
- 
+
+
 if __name__ == "__main__":
     log_json("info", "Starting dashboard", port=PORT)
     app.run(host="0.0.0.0", port=PORT, debug=False)
