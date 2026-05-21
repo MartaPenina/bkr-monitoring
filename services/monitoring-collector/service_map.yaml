@@ -9,66 +9,66 @@
  
 services:
  
-  # ── FaultLens own infrastructure (GCP) ──────────────────────
+  # # ── FaultLens own infrastructure (GCP) ──────────────────────
  
-  web-ui:
-    url: "http://bkr-node03-ui-1:80"
-    health_endpoint: "/health"
-    port: 80
-    depends_on:
-      - api-proxy
-      - history-api
-    description: "Frontend web interface serving React SPA via nginx"
+  # web-ui:
+  #   url: "http://bkr-node03-ui-1:80"
+  #   health_endpoint: "/health"
+  #   port: 80
+  #   depends_on:
+  #     - api-proxy
+  #     - history-api
+  #   description: "Frontend web interface serving React SPA via nginx"
  
-  api-proxy:
-    url: "http://10.0.1.13:8080"
-    health_endpoint: "/health"
-    port: 8080
-    depends_on:
-      - rabbitmq
-    description: "API gateway that fetches external data and publishes to queue"
+  # api-proxy:
+  #   url: "http://10.0.1.13:8080"
+  #   health_endpoint: "/health"
+  #   port: 8080
+  #   depends_on:
+  #     - rabbitmq
+  #   description: "API gateway that fetches external data and publishes to queue"
  
-  rabbitmq:
-    url: "http://guest:guest@10.0.1.13:15672"
-    health_endpoint: "/api/healthchecks/node"
-    port: 5672
-    management_port: 15672
-    depends_on: []
-    description: "Message broker for async communication between services"
-    metrics:
-      - queue_depth
-      - consumers_count
-      - publish_rate
+  # rabbitmq:
+  #   url: "http://guest:guest@10.0.1.13:15672"
+  #   health_endpoint: "/api/healthchecks/node"
+  #   port: 5672
+  #   management_port: 15672
+  #   depends_on: []
+  #   description: "Message broker for async communication between services"
+  #   metrics:
+  #     - queue_depth
+  #     - consumers_count
+  #     - publish_rate
  
-  history-consumer:
-    url: "http://10.0.1.12:8081"
-    health_endpoint: null
-    port: 8081
-    health_check_method: "tcp"
-    depends_on:
-      - rabbitmq
-      - database
-    description: "Consumes queue messages and persists data to PostgreSQL"
+  # history-consumer:
+  #   url: "http://10.0.1.12:8081"
+  #   health_endpoint: null
+  #   port: 8081
+  #   health_check_method: "tcp"
+  #   depends_on:
+  #     - rabbitmq
+  #     - database
+  #   description: "Consumes queue messages and persists data to PostgreSQL"
  
-  history-api:
-    url: "http://10.0.1.12:8000"
-    health_endpoint: "/health"
-    port: 8000
-    depends_on:
-      - database
-    description: "Read-only REST API for historical data from PostgreSQL"
+  # history-api:
+  #   url: "http://10.0.1.12:8000"
+  #   health_endpoint: "/health"
+  #   port: 8000
+  #   depends_on:
+  #     - database
+  #   description: "Read-only REST API for historical data from PostgreSQL"
  
-  database:
-    url: "http://10.205.0.3:5432"
-    health_endpoint: null
-    port: 5432
-    depends_on: []
-    description: "PostgreSQL + TimescaleDB for data and time-series metrics"
-    health_check_method: "tcp"
-    metrics:
-      - active_connections
-      - database_size
-      - replication_lag
+  # database:
+  #   url: "http://10.205.0.3:5432"
+  #   health_endpoint: null
+  #   port: 5432
+  #   depends_on: []
+  #   description: "PostgreSQL + TimescaleDB for data and time-series metrics"
+  #   health_check_method: "tcp"
+  #   metrics:
+  #     - active_connections
+  #     - database_size
+  #     - replication_lag
  
   # ── CoinOps application (AWS eu-central-1) ───────────────────
   # Cross-cloud monitoring: FaultLens on GCP monitors CoinOps on AWS
@@ -121,27 +121,27 @@ services:
  
 # Fault propagation chains (precomputed for LLM context)
 fault_chains:
-  database_down:
-    root: database
-    affected:
-      - history-consumer
-      - history-api
-      - web-ui
-    description: "DB failure breaks all data persistence and retrieval"
+  # database_down:
+  #   root: database
+  #   affected:
+  #     - history-consumer
+  #     - history-api
+  #     - web-ui
+  #   description: "DB failure breaks all data persistence and retrieval"
  
-  rabbitmq_down:
-    root: rabbitmq
-    affected:
-      - api-proxy
-      - history-consumer
-      - web-ui
-    description: "Queue failure breaks async data pipeline"
+  # rabbitmq_down:
+  #   root: rabbitmq
+  #   affected:
+  #     - api-proxy
+  #     - history-consumer
+  #     - web-ui
+  #   description: "Queue failure breaks async data pipeline"
  
-  proxy_down:
-    root: api-proxy
-    affected:
-      - web-ui
-    description: "Proxy failure means no live data for frontend"
+  # proxy_down:
+  #   root: api-proxy
+  #   affected:
+  #     - web-ui
+  #   description: "Proxy failure means no live data for frontend"
  
   coinops_rabbitmq_down:
     root: coinops-rabbitmq
