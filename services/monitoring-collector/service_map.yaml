@@ -83,7 +83,7 @@ services:
     description: "CoinOps frontend — crypto market dashboard (React SPA via nginx, AWS node-03)"
  
   coinops-proxy:
-    url: "http://18.198.197.77:8080"
+    url: "http://18.185.17.147:8080"
     health_endpoint: "/health"
     port: 8080
     depends_on:
@@ -91,7 +91,7 @@ services:
     description: "CoinOps proxy — market data fetcher and queue publisher (AWS node-02)"
  
   coinops-history-api:
-    url: "http://18.198.197.77:8000"
+    url: "http://18.185.17.147:8000"
     health_endpoint: "/health"
     port: 8000
     depends_on:
@@ -99,7 +99,7 @@ services:
     description: "CoinOps history API — historical market data REST API (AWS node-01)"
  
   coinops-history-consumer:
-    url: "http://18.198.197.77:5672"
+    url: "http://18.185.17.147:5672"
     health_endpoint: null
     port: 5672
     health_check_method: "tcp"
@@ -108,7 +108,7 @@ services:
     description: "CoinOps history consumer — queue consumer persisting to RDS (AWS node-01)"
  
   coinops-rabbitmq:
-    url: "http://18.198.197.77:5672"
+    url: "http://18.185.17.147:5672"
     health_endpoint: null
     port: 5672
     health_check_method: "tcp"
