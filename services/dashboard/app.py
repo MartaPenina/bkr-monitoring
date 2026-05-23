@@ -139,12 +139,19 @@ def api_metrics_history():
         conn = get_db()
         with conn.cursor() as cur:
             if since_hours:
+                # Sample data: max 120 points per service to avoid overload
+                points_per_service = 120 if since_hours <= 6 else 200
                 cur.execute("""
                     SELECT service_name, status, response_time, http_status, collected_at
-                    FROM service_metrics
-                    WHERE collected_at >= NOW() - (%s * INTERVAL '1 hour')
+                    FROM (
+                        SELECT *, ROW_NUMBER() OVER (
+                            PARTITION BY service_name ORDER BY collected_at DESC
+                        ) AS rn
+                        FROM service_metrics
+                        WHERE collected_at >= NOW() - (%s * INTERVAL '1 hour')
+                    ) sub WHERE rn <= %s
                     ORDER BY service_name, collected_at ASC
-                """, (since_hours,))
+                """, (since_hours, points_per_service))
             else:
                 cur.execute("""
                     SELECT service_name, status, response_time, http_status, collected_at
