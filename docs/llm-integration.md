@@ -1,89 +1,138 @@
-# Інтеграція з LLM (Claude API)
+# LLM Integration — Claude API via OpenRouter
 
-## Чому Claude API
+## Why Claude API
 
-- Структурований вхід/вихід (XML-теги у промпті → JSON у відповіді)
-- Великий контекстний вікно для телеметричних даних
-- Якісне reasoning для аналізу причинно-наслідкових зв'язків
+- Structured input/output: XML-tagged prompt sections → JSON response
+- Large context window for telemetry data (metrics, logs, dependency graph)
+- Strong reasoning for root cause and fault chain analysis
+- Cost-effective via OpenRouter: `anthropic/claude-3-haiku` ≈ $0.001 per diagnosis
 
-## Як працює діагностика
+---
 
-### 1. Виявлення аномалії
+## How Diagnosis Works
 
-Monitoring Collector виявляє проблему коли:
-- Сервіс не відповідає на health check (status: down/timeout)
-- HTTP status != 200 (status: unhealthy)
-- Response time > 5 секунд (status: high_latency)
-- 2+ послідовних збої (consecutive_failures >= threshold)
+### 1. Anomaly Detection
 
-### 2. Збір контексту
+The Monitoring Collector triggers a diagnosis when:
 
-При аномалії collector збирає:
-- Останні 10 метрик проблемного сервісу
-- Метрики усіх залежностей (depends_on)
-- Зворотні залежності (хто залежить від цього сервісу)
-- Повну карту залежностей
-- Поточний стан усіх сервісів
+| Condition | Threshold |
+|---|---|
+| Service does not respond to health check | `status: down` or `timeout` |
+| HTTP status != 200 | `status: unhealthy` |
+| Response time exceeds threshold | `> 5 seconds` → `high_latency` |
+| Consecutive failures | `>= 2 consecutive failures` |
 
-### 3. Формування промпту
+### 2. Context Collection
 
-Промпт (`prompt_templates/fault_diagnosis.txt`) містить XML-секції:
-- `<incident>` — деталі інциденту
-- `<recent_metrics>` — часовий ряд метрик
-- `<dependency_metrics>` — стан залежностей
-- `<service_dependency_map>` — граф залежностей
-- `<all_service_states>` — загальний стан системи
+When an anomaly is detected, the collector builds the full incident context:
+- Last 10 metrics of the affected service
+- Metrics of all direct dependencies (`depends_on`)
+- Reverse dependencies (services that depend on the affected one)
+- Full service dependency map (`service_map.yaml`)
+- Current state of all monitored services
 
-### 4. Claude API виклик
+### 3. Prompt Construction
+
+The prompt (`prompt_templates/fault_diagnosis.txt`) uses XML sections:
+
+| Section | Content |
+|---|---|
+| `<incident>` | Incident details: service name, status, timestamp |
+| `<recent_metrics>` | Time-series metrics of the affected service |
+| `<dependency_metrics>` | Health state of all dependencies |
+| `<service_dependency_map>` | Full dependency graph |
+| `<all_service_states>` | Current state of every monitored service |
+
+### 4. API Call (via OpenRouter)
+
+The system calls Claude through OpenRouter — no direct Anthropic SDK dependency:
 
 ```python
-client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
-message = client.messages.create(
-    model="claude-sonnet-4-20250514",
-    max_tokens=2048,
-    messages=[{"role": "user", "content": prompt}],
+import httpx
+
+response = httpx.post(
+    "https://openrouter.ai/api/v1/chat/completions",
+    headers={
+        "Authorization": f"Bearer {ANTHROPIC_API_KEY}",  # OpenRouter key
+        "Content-Type": "application/json",
+        "HTTP-Referer": "https://github.com/MartaPenina/bkr-monitoring",
+    },
+    json={
+        "model": "anthropic/claude-3-haiku",
+        "max_tokens": 2048,
+        "messages": [{"role": "user", "content": prompt}],
+    },
+    timeout=60,
 )
 ```
 
-### 5. Парсинг відповіді
+> **Note:** `ANTHROPIC_API_KEY` holds an OpenRouter key (`sk-or-v1-...`), not a direct Anthropic key.
 
-Claude повертає JSON:
+### 5. Response Parsing
+
+Claude returns a JSON object:
+
 ```json
 {
-  "root_cause": "PostgreSQL is down, causing cascading failure",
-  "confidence": 0.85,
-  "fault_chain": ["database", "history-consumer", "history-api", "web-ui"],
+  "root_cause": "coinops-rabbitmq is down, causing cascading failure across the async pipeline",
+  "confidence": 0.90,
+  "fault_chain": ["coinops-rabbitmq", "coinops-proxy", "coinops-history-api", "coinops-ui"],
+  "fault_chain_explanation": "RabbitMQ failure prevents proxy from publishing market data, which breaks history pipeline and frontend display",
+  "predicted_impact": ["coinops-ui", "coinops-history-consumer"],
+  "failure_prediction": {
+    "next_failures": ["coinops-ui", "coinops-history-consumer"],
+    "time_estimate": "2-5 minutes",
+    "explanation": "Dependent services will fail as queue backlog grows"
+  },
   "recommendations": [
     {
-      "action": "Restart PostgreSQL container",
+      "action": "Inspect RabbitMQ container logs",
       "priority": "immediate",
-      "command": "docker restart postgres"
+      "command": "docker inspect coinops-rabbitmq | grep 'Status|Error' && docker logs coinops-rabbitmq"
     }
   ],
-  "predicted_impact": ["web-ui", "history-consumer"]
+  "prevention": "Implement circuit breakers and health-based routing to isolate queue failures",
+  "diagnosis_source": "claude_api",
+  "model": "anthropic/claude-3-haiku"
 }
 ```
 
-## Fallback евристики
+---
 
-Якщо Claude API недоступне:
-1. Перевірити чи залежності сервісу також down
-2. Якщо так → cascading failure, root = найглибша down-залежність
-3. Якщо ні → isolated failure
-4. Сформувати базові рекомендації (restart, check logs)
+## Fallback Heuristic Diagnosis
 
-Евристики працюють завжди, навіть без API ключа.
-Confidence евристик: 0.4-0.7 (vs 0.7-0.95 для Claude).
+When Claude API is unavailable (no key, API error, timeout), the system falls back to rule-based heuristics:
+
+1. Check if the affected service's dependencies are also down
+2. If yes → **cascading failure**: root = deepest failed dependency in the chain
+3. If no → **isolated failure**: the service itself is the root cause
+4. Generate basic recommendations: restart container, check logs
+
+Heuristics always work — even without an API key. Confidence scores:
+- Claude API: **0.85–0.95**
+- Heuristic fallback: **0.40–0.70**
+
+---
 
 ## Rate Limiting
 
-- Не більше 1 діагнозу на сервіс за 30 секунд
-- Діагностика тільки при anomaly, не на кожен poll
+- Maximum 1 diagnosis per service per **30 seconds** (`MIN_DIAGNOSIS_INTERVAL`)
+- Diagnosis is triggered only on anomaly detection, not on every poll
+- Manual re-diagnosis available via `POST /diagnose/force` endpoint (bypasses rate limit)
 
-## Конфігурація
+---
 
-Змінні середовища:
-- `ANTHROPIC_API_KEY` — ключ API (обов'язково для LLM)
-- `CLAUDE_MODEL` — модель (default: claude-sonnet-4-20250514)
-- `MAX_TOKENS` — макс. токенів у відповіді (default: 2048)
-- `MIN_DIAGNOSIS_INTERVAL` — мін. інтервал між діагнозами (default: 30s)
+## Environment Variables
+
+| Variable | Default | Description |
+|---|---|---|
+| `ANTHROPIC_API_KEY` | *(empty)* | OpenRouter API key (`sk-or-v1-...`). Leave empty to use heuristic fallback. |
+| `CLAUDE_MODEL` | `anthropic/claude-3-haiku` | Model identifier on OpenRouter |
+| `MAX_TOKENS` | `2048` | Maximum tokens in LLM response |
+| `MIN_DIAGNOSIS_INTERVAL` | `30` | Minimum seconds between diagnoses per service |
+
+---
+
+## Enable / Disable LLM
+
+See [llm-testing.md](./llm-testing.md) for step-by-step instructions.

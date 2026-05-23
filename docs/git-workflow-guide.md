@@ -17,7 +17,7 @@
 cd /d/nulp-thesis/faultlens-target-app
 ```
 
-**Активна гілка:** `aws-deploy`
+**Активна гілка:** `main`
 
 **Remote:**
 - `faultlens` → `https://github.com/MartaPenina/faultlens-target-app.git` ✅
@@ -27,7 +27,7 @@ cd /d/nulp-thesis/faultlens-target-app
 ```bash
 git add -A
 git commit -m "опис змін"
-git push faultlens aws-deploy
+git push faultlens main
 ```
 
 **Ніколи не писати:**
