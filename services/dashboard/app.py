@@ -129,7 +129,6 @@ def api_metrics(service_name):
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-
 @app.route("/api/metrics/history")
 def api_metrics_history():
     limit = min(request.args.get("limit", 40, type=int), 200)
@@ -143,7 +142,7 @@ def api_metrics_history():
                 cur.execute("""
                     SELECT service_name, status, response_time, http_status, collected_at
                     FROM service_metrics
-                    WHERE collected_at >= NOW() - INTERVAL '%s hours'
+                    WHERE collected_at >= NOW() - (%s * INTERVAL '1 hour')
                     ORDER BY service_name, collected_at ASC
                 """, (since_hours,))
             else:
@@ -185,7 +184,7 @@ def api_metrics_uptime():
                        ROUND(100.0 * SUM(CASE WHEN status = 'healthy' THEN 1 ELSE 0 END) / COUNT(*), 1) as uptime_pct,
                        ROUND(AVG(CASE WHEN response_time IS NOT NULL THEN response_time * 1000 END), 0) as avg_response_ms
                 FROM service_metrics
-                WHERE collected_at >= NOW() - INTERVAL '%s hours'
+                WHERE collected_at >= NOW() - (%s * INTERVAL '1 hour')
                 GROUP BY service_name
             """, (hours,))
             rows = cur.fetchall()
