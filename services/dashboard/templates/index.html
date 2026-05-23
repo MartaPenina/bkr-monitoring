@@ -8,373 +8,199 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
   <style>
     *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
-
     :root {
-      --bg: #09090b;
-      --surface: #121215;
-      --border: #27272a;
-      --accent: #6366f1;
-      --accent-dim: rgba(99,102,241,0.15);
-      --yes: #22c55e;
-      --no: #ef4444;
-      --warn: #eab308;
-      --text: #f4f4f5;
-      --muted: #71717a;
-      --font: 'Inter', system-ui, sans-serif;
-      --mono: 'JetBrains Mono', monospace;
+      --bg: #09090b; --surface: #121215; --border: #27272a;
+      --accent: #6366f1; --yes: #22c55e; --no: #ef4444; --warn: #eab308;
+      --text: #f4f4f5; --muted: #71717a;
+      --font: 'Inter', system-ui, sans-serif; --mono: 'JetBrains Mono', monospace;
     }
-
-    body {
-      font-family: var(--font);
-      background: var(--bg);
-      color: var(--text);
-      height: 100vh;
-      display: flex;
-      overflow: hidden;
-      position: relative;
-    }
-
-    body::before {
-      content: '';
-      position: fixed; inset: 0; z-index: 0;
-      background:
-        radial-gradient(circle at 0% 0%, rgba(99,102,241,0.12) 0%, transparent 50%),
-        radial-gradient(circle at 100% 100%, rgba(168,85,247,0.10) 0%, transparent 50%);
-      pointer-events: none;
-    }
-
-    /* ── Sidebar ── */
-    .sidebar {
-      width: 240px; flex-shrink: 0;
-      background: rgba(0,0,0,0.3);
-      backdrop-filter: blur(24px);
-      border-right: 1px solid var(--border);
-      display: flex; flex-direction: column; z-index: 10;
-    }
-    .sidebar-logo {
-      padding: 24px 20px 16px;
-      display: flex; align-items: center; gap: 10px;
-      border-bottom: 1px solid var(--border);
-    }
-    .logo-icon {
-      width: 32px; height: 32px;
-      background: var(--accent); border-radius: 8px;
-      display: flex; align-items: center; justify-content: center;
-      box-shadow: 0 0 20px rgba(99,102,241,0.4); font-size: 16px;
-    }
-    .logo-text {
-      font-size: 15px; font-weight: 700;
-      background: linear-gradient(to right, #fff, rgba(255,255,255,0.6));
-      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-      letter-spacing: -0.3px;
-    }
-    .sidebar-nav { flex: 1; padding: 12px 12px; display: flex; flex-direction: column; gap: 2px; }
-    .nav-item {
-      display: flex; align-items: center; gap: 10px;
-      padding: 10px 12px; border-radius: 10px;
-      font-size: 13px; font-weight: 500;
-      color: var(--muted); cursor: pointer;
-      border: none; background: transparent; width: 100%; text-align: left;
-      transition: all 0.15s; position: relative;
-    }
-    .nav-item:hover { background: rgba(255,255,255,0.04); color: var(--text); }
-    .nav-item.active { background: var(--accent); color: #fff; box-shadow: 0 4px 16px rgba(99,102,241,0.3); }
-    .nav-item svg { width: 16px; height: 16px; flex-shrink: 0; }
-    .nav-badge-count {
-      margin-left: auto;
-      background: rgba(239,68,68,0.2); color: var(--no);
-      border-radius: 20px; padding: 1px 6px;
-      font-size: 10px; font-weight: 700;
-    }
-    .sidebar-footer { padding: 12px; border-top: 1px solid var(--border); }
-    .status-card {
-      background: rgba(255,255,255,0.03);
-      border: 1px solid rgba(255,255,255,0.08);
-      border-radius: 10px; padding: 12px;
-    }
-    .status-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
-    .status-row:last-child { margin-bottom: 0; }
-    .status-label { font-size: 11px; color: var(--muted); }
-    .status-dot { width: 6px; height: 6px; border-radius: 50%; }
-    .dot-green { background: var(--yes); box-shadow: 0 0 8px rgba(34,197,94,0.6); animation: pulse 2s infinite; }
-    .dot-red   { background: var(--no);  box-shadow: 0 0 8px rgba(239,68,68,0.5); }
-    .dot-gray  { background: var(--muted); }
-
+    body { font-family: var(--font); background: var(--bg); color: var(--text); height: 100vh; display: flex; overflow: hidden; }
+    body::before { content:''; position:fixed; inset:0; z-index:0; background: radial-gradient(circle at 0% 0%, rgba(99,102,241,0.12) 0%, transparent 50%), radial-gradient(circle at 100% 100%, rgba(168,85,247,0.10) 0%, transparent 50%); pointer-events:none; }
+    .sidebar { width:240px; flex-shrink:0; background:rgba(0,0,0,0.3); backdrop-filter:blur(24px); border-right:1px solid var(--border); display:flex; flex-direction:column; z-index:10; }
+    .sidebar-logo { padding:24px 20px 16px; display:flex; align-items:center; gap:10px; border-bottom:1px solid var(--border); }
+    .logo-icon { width:32px; height:32px; background:var(--accent); border-radius:8px; display:flex; align-items:center; justify-content:center; box-shadow:0 0 20px rgba(99,102,241,0.4); font-size:16px; }
+    .logo-text { font-size:15px; font-weight:700; background:linear-gradient(to right,#fff,rgba(255,255,255,0.6)); -webkit-background-clip:text; -webkit-text-fill-color:transparent; letter-spacing:-0.3px; }
+    .sidebar-nav { flex:1; padding:12px; display:flex; flex-direction:column; gap:2px; }
+    .nav-item { display:flex; align-items:center; gap:10px; padding:10px 12px; border-radius:10px; font-size:13px; font-weight:500; color:var(--muted); cursor:pointer; border:none; background:transparent; width:100%; text-align:left; transition:all .15s; }
+    .nav-item:hover { background:rgba(255,255,255,0.04); color:var(--text); }
+    .nav-item.active { background:var(--accent); color:#fff; box-shadow:0 4px 16px rgba(99,102,241,0.3); }
+    .nav-item svg { width:16px; height:16px; flex-shrink:0; }
+    .nav-badge-count { margin-left:auto; background:rgba(239,68,68,0.2); color:var(--no); border-radius:20px; padding:1px 6px; font-size:10px; font-weight:700; }
+    .sidebar-footer { padding:12px; border-top:1px solid var(--border); }
+    .status-card { background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08); border-radius:10px; padding:12px; }
+    .status-row { display:flex; align-items:center; justify-content:space-between; margin-bottom:6px; }
+    .status-row:last-child { margin-bottom:0; }
+    .status-label { font-size:11px; color:var(--muted); }
+    .status-dot { width:6px; height:6px; border-radius:50%; }
+    .dot-green { background:var(--yes); box-shadow:0 0 8px rgba(34,197,94,0.6); animation:pulse 2s infinite; }
+    .dot-red { background:var(--no); box-shadow:0 0 8px rgba(239,68,68,0.5); }
+    .dot-gray { background:var(--muted); }
     @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
-
-    /* ── Main ── */
-    .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; z-index: 5; }
-    .topbar {
-      height: 56px; flex-shrink: 0;
-      border-bottom: 1px solid var(--border);
-      background: rgba(0,0,0,0.1); backdrop-filter: blur(12px);
-      display: flex; align-items: center; justify-content: space-between;
-      padding: 0 24px; gap: 16px;
-    }
-    .topbar-title { font-size: 14px; font-weight: 600; }
-    .topbar-sub { font-size: 11px; color: var(--muted); margin-top: 1px; }
-    .topbar-actions { display: flex; align-items: center; gap: 8px; }
-    .btn {
-      display: flex; align-items: center; gap: 6px;
-      padding: 7px 14px; border-radius: 8px;
-      font-size: 12px; font-weight: 600; cursor: pointer;
-      border: none; transition: all 0.15s;
-    }
-    .btn-ghost { background: rgba(255,255,255,0.05); color: var(--muted); border: 1px solid var(--border); }
-    .btn-ghost:hover { background: rgba(255,255,255,0.08); color: var(--text); }
-    .badge {
-      padding: 3px 10px; border-radius: 20px;
-      font-size: 10px; font-weight: 700; letter-spacing: 0.3px;
-    }
-    .badge-green  { background: rgba(34,197,94,0.15);  color: var(--yes); border: 1px solid rgba(34,197,94,0.2); }
-    .badge-red    { background: rgba(239,68,68,0.15);  color: var(--no);  border: 1px solid rgba(239,68,68,0.2); }
-    .badge-yellow { background: rgba(234,179,8,0.15);  color: var(--warn);border: 1px solid rgba(234,179,8,0.2); }
-    .badge-accent { background: rgba(99,102,241,0.15); color: #818cf8;    border: 1px solid rgba(99,102,241,0.2); }
-    .badge-gray   { background: rgba(255,255,255,0.06);color: var(--muted);border: 1px solid var(--border); }
-
-    /* ── Content ── */
-    .content { flex: 1; overflow-y: auto; padding: 24px; }
-    .content::-webkit-scrollbar { width: 4px; }
-    .content::-webkit-scrollbar-thumb { background: #3f3f46; border-radius: 4px; }
-    .panel { display: none; }
-    .panel.active { display: block; }
-
-    /* ── Stats ── */
-    .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 24px; }
-    .stat-card {
-      background: rgba(255,255,255,0.03);
-      border: 1px solid rgba(255,255,255,0.08);
-      border-radius: 14px; padding: 18px 20px; transition: border-color 0.2s;
-    }
-    .stat-card:hover { border-color: rgba(255,255,255,0.12); }
-    .stat-label { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 8px; }
-    .stat-value { font-size: 28px; font-weight: 700; line-height: 1; }
-    .stat-value.green  { color: var(--yes); }
-    .stat-value.red    { color: var(--no); }
-    .stat-value.accent { color: #818cf8; }
-    .stat-sub { font-size: 11px; color: var(--muted); margin-top: 4px; }
-
-    /* ── Section ── */
-    .section { margin-bottom: 24px; }
-    .section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
-    .section-title { font-size: 13px; font-weight: 600; display: flex; align-items: center; gap: 7px; }
-    .section-title svg { width: 14px; height: 14px; color: var(--accent); }
-
-    /* ── Service cards ── */
-    .service-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
-    .service-card {
-      background: rgba(255,255,255,0.025);
-      border: 1px solid rgba(255,255,255,0.07);
-      border-radius: 12px; padding: 16px;
-      transition: all 0.2s; position: relative;
-    }
-    .service-card:hover { border-color: rgba(255,255,255,0.12); background: rgba(255,255,255,0.04); }
-    .service-card.healthy   { border-left: 2px solid var(--yes); }
-    .service-card.down      { border-left: 2px solid var(--no); }
-    .service-card.unhealthy, .service-card.warning { border-left: 2px solid var(--warn); }
-    .svc-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
-    .svc-name-row { display: flex; align-items: center; gap: 8px; }
-    .svc-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
-    .svc-dot.healthy  { background: var(--yes); box-shadow: 0 0 6px rgba(34,197,94,0.5); animation: pulse 2s infinite; }
-    .svc-dot.down, .svc-dot.error, .svc-dot.timeout { background: var(--no); box-shadow: 0 0 6px rgba(239,68,68,0.5); }
-    .svc-dot.unhealthy, .svc-dot.warning { background: var(--warn); box-shadow: 0 0 6px rgba(234,179,8,0.5); }
-    .svc-dot.unknown  { background: var(--muted); }
-    .svc-name { font-size: 13px; font-weight: 600; }
-    .svc-metrics { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
-    .svc-metric { background: rgba(255,255,255,0.03); border-radius: 6px; padding: 6px 8px; }
-    .svc-metric-label { font-size: 9px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 2px; }
-    .svc-metric-value { font-size: 12px; font-weight: 600; font-family: var(--mono); }
-    .svc-metric-value.green { color: var(--yes); }
-    .svc-metric-value.red   { color: var(--no); }
-    .svc-metric-value.warn  { color: var(--warn); }
-    .svc-failures { margin-top: 8px; font-size: 11px; color: var(--no); display: flex; align-items: center; gap: 5px; }
-
-    /* ── Time range selector ── */
-    .time-range-btn {
-      padding: 4px 10px; border-radius: 6px; font-size: 11px; font-weight: 600;
-      border: 1px solid var(--border); background: transparent; color: var(--muted);
-      cursor: pointer; transition: all 0.15s;
-    }
-    .time-range-btn:hover { background: rgba(255,255,255,0.05); color: var(--text); }
-    .time-range-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
-
-    /* ── Incidents ── */
-    .incident-list { display: flex; flex-direction: column; gap: 8px; }
-    .incident {
-      background: rgba(255,255,255,0.025);
-      border: 1px solid rgba(255,255,255,0.07);
-      border-radius: 12px; padding: 14px 16px;
-      cursor: pointer; transition: all 0.2s;
-    }
-    .incident:hover { border-color: rgba(255,255,255,0.12); background: rgba(255,255,255,0.04); }
-    .incident.critical { border-left: 2px solid var(--no); }
-    .incident.warning  { border-left: 2px solid var(--warn); }
-    .inc-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
-    .inc-left { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-    .inc-service { font-size: 13px; font-weight: 600; }
-    .inc-time { font-size: 11px; color: var(--muted); font-family: var(--mono); }
-    .inc-type { font-size: 11px; color: var(--muted); margin-bottom: 4px; }
-    .inc-count {
-      font-size: 11px; color: var(--muted);
-      background: rgba(255,255,255,0.05);
-      border: 1px solid var(--border);
-      border-radius: 20px; padding: 1px 8px;
-      font-family: var(--mono);
-    }
-    .diag-panel {
-      margin-top: 12px;
-      background: rgba(0,0,0,0.3);
-      border: 1px solid rgba(255,255,255,0.06);
-      border-radius: 10px; padding: 14px;
-      display: none;
-    }
-    .diag-panel.open { display: block; }
-    .diag-title { font-size: 12px; font-weight: 700; color: #818cf8; margin-bottom: 10px; display: flex; align-items: center; gap: 6px; }
-    .diag-row { margin-bottom: 8px; }
-    .diag-row-label { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 3px; }
-    .diag-row-value { font-size: 13px; color: var(--text); line-height: 1.5; }
-    .fault-chain { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
-    .chain-node {
-      font-size: 11px; font-weight: 600; font-family: var(--mono);
-      background: rgba(99,102,241,0.15); color: #818cf8;
-      border: 1px solid rgba(99,102,241,0.2);
-      padding: 3px 8px; border-radius: 6px;
-    }
-    .chain-node.root { background: rgba(239,68,68,0.15); color: var(--no); border-color: rgba(239,68,68,0.2); }
-    .chain-arrow { color: var(--muted); font-size: 12px; }
-    .recs { display: flex; flex-direction: column; gap: 6px; margin-top: 6px; }
-    .rec-item { background: rgba(255,255,255,0.03); border-radius: 8px; padding: 10px 12px; }
-    .rec-header { display: flex; align-items: center; gap: 6px; margin-bottom: 4px; }
-    .rec-priority { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
-    .pri-immediate  { background: var(--no); }
-    .pri-short-term { background: var(--warn); }
-    .pri-long-term  { background: var(--yes); }
-    .rec-action { font-size: 12px; font-weight: 500; }
-    .rec-cmd { font-family: var(--mono); font-size: 11px; color: #a78bfa; background: rgba(99,102,241,0.1); padding: 4px 8px; border-radius: 5px; margin-top: 4px; display: inline-block; }
-
-    /* ── Run LLM Diagnosis button ── */
-    .btn-diagnose {
-      margin-top: 10px;
-      padding: 7px 16px;
-      background: rgba(99,102,241,0.15);
-      border: 1px solid rgba(99,102,241,0.3);
-      color: #818cf8;
-      border-radius: 8px;
-      font-size: 12px;
-      font-weight: 600;
-      cursor: pointer;
-      transition: all 0.15s;
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-    }
-    .btn-diagnose:hover:not(:disabled) {
-      background: rgba(99,102,241,0.28);
-      border-color: rgba(99,102,241,0.5);
-      color: #a5b4fc;
-    }
-    .btn-diagnose:disabled { cursor: not-allowed; opacity: 0.6; }
-    .btn-diagnose.loading { animation: diagPulse 1.2s ease-in-out infinite; }
+    .main { flex:1; display:flex; flex-direction:column; overflow:hidden; z-index:5; }
+    .topbar { height:56px; flex-shrink:0; border-bottom:1px solid var(--border); background:rgba(0,0,0,0.1); backdrop-filter:blur(12px); display:flex; align-items:center; justify-content:space-between; padding:0 24px; gap:16px; }
+    .topbar-title { font-size:14px; font-weight:600; }
+    .topbar-sub { font-size:11px; color:var(--muted); margin-top:1px; }
+    .topbar-actions { display:flex; align-items:center; gap:8px; }
+    .btn { display:flex; align-items:center; gap:6px; padding:7px 14px; border-radius:8px; font-size:12px; font-weight:600; cursor:pointer; border:none; transition:all .15s; }
+    .btn-ghost { background:rgba(255,255,255,0.05); color:var(--muted); border:1px solid var(--border); }
+    .btn-ghost:hover { background:rgba(255,255,255,0.08); color:var(--text); }
+    .badge { padding:3px 10px; border-radius:20px; font-size:10px; font-weight:700; letter-spacing:0.3px; }
+    .badge-green  { background:rgba(34,197,94,0.15);  color:var(--yes); border:1px solid rgba(34,197,94,0.2); }
+    .badge-red    { background:rgba(239,68,68,0.15);  color:var(--no);  border:1px solid rgba(239,68,68,0.2); }
+    .badge-yellow { background:rgba(234,179,8,0.15);  color:var(--warn);border:1px solid rgba(234,179,8,0.2); }
+    .badge-accent { background:rgba(99,102,241,0.15); color:#818cf8;    border:1px solid rgba(99,102,241,0.2); }
+    .badge-gray   { background:rgba(255,255,255,0.06);color:var(--muted);border:1px solid var(--border); }
+    .content { flex:1; overflow-y:auto; padding:24px; }
+    .content::-webkit-scrollbar { width:4px; }
+    .content::-webkit-scrollbar-thumb { background:#3f3f46; border-radius:4px; }
+    .panel { display:none; }
+    .panel.active { display:block; }
+    .stats-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-bottom:24px; }
+    .stat-card { background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08); border-radius:14px; padding:18px 20px; transition:border-color .2s; }
+    .stat-card:hover { border-color:rgba(255,255,255,0.12); }
+    .stat-label { font-size:10px; color:var(--muted); text-transform:uppercase; letter-spacing:0.8px; margin-bottom:8px; }
+    .stat-value { font-size:28px; font-weight:700; line-height:1; }
+    .stat-value.green { color:var(--yes); } .stat-value.red { color:var(--no); } .stat-value.accent { color:#818cf8; }
+    .stat-sub { font-size:11px; color:var(--muted); margin-top:4px; }
+    .section { margin-bottom:24px; }
+    .section-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; }
+    .section-title { font-size:13px; font-weight:600; display:flex; align-items:center; gap:7px; }
+    .section-title svg { width:14px; height:14px; color:var(--accent); }
+    .service-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; }
+    .service-card { background:rgba(255,255,255,0.025); border:1px solid rgba(255,255,255,0.07); border-radius:12px; padding:16px; transition:all .2s; }
+    .service-card:hover { border-color:rgba(255,255,255,0.12); background:rgba(255,255,255,0.04); }
+    .service-card.healthy { border-left:2px solid var(--yes); }
+    .service-card.down { border-left:2px solid var(--no); }
+    .service-card.unhealthy,.service-card.warning { border-left:2px solid var(--warn); }
+    .svc-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; }
+    .svc-name-row { display:flex; align-items:center; gap:8px; }
+    .svc-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+    .svc-dot.healthy { background:var(--yes); box-shadow:0 0 6px rgba(34,197,94,0.5); animation:pulse 2s infinite; }
+    .svc-dot.down,.svc-dot.error,.svc-dot.timeout { background:var(--no); box-shadow:0 0 6px rgba(239,68,68,0.5); }
+    .svc-dot.unhealthy,.svc-dot.warning { background:var(--warn); box-shadow:0 0 6px rgba(234,179,8,0.5); }
+    .svc-dot.unknown { background:var(--muted); }
+    .svc-name { font-size:13px; font-weight:600; }
+    .svc-metrics { display:grid; grid-template-columns:1fr 1fr; gap:6px; }
+    .svc-metric { background:rgba(255,255,255,0.03); border-radius:6px; padding:6px 8px; }
+    .svc-metric-label { font-size:9px; color:var(--muted); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:2px; }
+    .svc-metric-value { font-size:12px; font-weight:600; font-family:var(--mono); }
+    .svc-metric-value.green { color:var(--yes); } .svc-metric-value.red { color:var(--no); } .svc-metric-value.warn { color:var(--warn); }
+    .svc-failures { margin-top:8px; font-size:11px; color:var(--no); display:flex; align-items:center; gap:5px; }
+    .time-range-btn { padding:4px 10px; border-radius:6px; font-size:11px; font-weight:600; border:1px solid var(--border); background:transparent; color:var(--muted); cursor:pointer; transition:all .15s; }
+    .time-range-btn:hover { background:rgba(255,255,255,0.05); color:var(--text); }
+    .time-range-btn.active { background:var(--accent); color:#fff; border-color:var(--accent); }
+    .incident-list { display:flex; flex-direction:column; gap:8px; }
+    .incident { background:rgba(255,255,255,0.025); border:1px solid rgba(255,255,255,0.07); border-radius:12px; padding:14px 16px; cursor:pointer; transition:all .2s; }
+    .incident:hover { border-color:rgba(255,255,255,0.12); background:rgba(255,255,255,0.04); }
+    .incident.critical { border-left:2px solid var(--no); } .incident.warning { border-left:2px solid var(--warn); }
+    .inc-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:6px; }
+    .inc-left { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+    .inc-service { font-size:13px; font-weight:600; }
+    .inc-time { font-size:11px; color:var(--muted); font-family:var(--mono); }
+    .inc-type { font-size:11px; color:var(--muted); margin-bottom:4px; }
+    .inc-count { font-size:11px; color:var(--muted); background:rgba(255,255,255,0.05); border:1px solid var(--border); border-radius:20px; padding:1px 8px; font-family:var(--mono); }
+    .diag-panel { margin-top:12px; background:rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.06); border-radius:10px; padding:14px; display:none; }
+    .diag-panel.open { display:block; }
+    .diag-title { font-size:12px; font-weight:700; color:#818cf8; margin-bottom:10px; display:flex; align-items:center; gap:6px; }
+    .diag-row { margin-bottom:8px; }
+    .diag-row-label { font-size:10px; color:var(--muted); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:3px; }
+    .diag-row-value { font-size:13px; color:var(--text); line-height:1.5; }
+    .fault-chain { display:flex; align-items:center; gap:6px; flex-wrap:wrap; }
+    .chain-node { font-size:11px; font-weight:600; font-family:var(--mono); background:rgba(99,102,241,0.15); color:#818cf8; border:1px solid rgba(99,102,241,0.2); padding:3px 8px; border-radius:6px; }
+    .chain-node.root { background:rgba(239,68,68,0.15); color:var(--no); border-color:rgba(239,68,68,0.2); }
+    .chain-arrow { color:var(--muted); font-size:12px; }
+    .recs { display:flex; flex-direction:column; gap:6px; margin-top:6px; }
+    .rec-item { background:rgba(255,255,255,0.03); border-radius:8px; padding:10px 12px; }
+    .rec-header { display:flex; align-items:center; gap:6px; margin-bottom:4px; }
+    .rec-priority { width:6px; height:6px; border-radius:50%; flex-shrink:0; }
+    .pri-immediate { background:var(--no); } .pri-short-term { background:var(--warn); } .pri-long-term { background:var(--yes); }
+    .rec-action { font-size:12px; font-weight:500; }
+    .rec-cmd { font-family:var(--mono); font-size:11px; color:#a78bfa; background:rgba(99,102,241,0.1); padding:4px 8px; border-radius:5px; margin-top:4px; display:inline-block; }
+    .btn-diagnose { margin-top:10px; padding:7px 16px; background:rgba(99,102,241,0.15); border:1px solid rgba(99,102,241,0.3); color:#818cf8; border-radius:8px; font-size:12px; font-weight:600; cursor:pointer; transition:all .15s; display:inline-flex; align-items:center; gap:6px; }
+    .btn-diagnose:hover:not(:disabled) { background:rgba(99,102,241,0.28); border-color:rgba(99,102,241,0.5); color:#a5b4fc; }
+    .btn-diagnose:disabled { cursor:not-allowed; opacity:0.6; }
+    .btn-diagnose.loading { animation:diagPulse 1.2s ease-in-out infinite; }
     @keyframes diagPulse { 0%,100%{opacity:1} 50%{opacity:0.5} }
-
-    /* ── Metrics charts ── */
-    .metrics-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
-    .chart-card {
-      background: rgba(255,255,255,0.025);
-      border: 1px solid rgba(255,255,255,0.07);
-      border-radius: 14px; padding: 16px 18px;
-    }
-    .chart-card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
-    .chart-card-name { font-size: 12px; font-weight: 600; display: flex; align-items: center; gap: 8px; }
-    .chart-card-cur { font-family: var(--mono); font-size: 12px; font-weight: 600; }
-    .chart-card-cur.fast { color: var(--yes); }
-    .chart-card-cur.slow { color: var(--warn); }
-    .chart-card-cur.dead { color: var(--no); }
-    .chart-wrap { position: relative; height: 110px; }
-    .chart-no-data {
-      height: 110px; display: flex; align-items: center; justify-content: center;
-      color: var(--muted); font-size: 12px; font-family: var(--mono);
-    }
-
-    /* ── Topology ── */
-    .dep-graph-wrap {
-      background: rgba(255,255,255,0.025);
-      border: 1px solid rgba(255,255,255,0.07);
-      border-radius: 14px; padding: 20px;
-      margin-bottom: 16px;
-    }
-    #depCanvas { width: 100%; height: 360px; display: block; }
-    .topo-legend {
-      display: flex; gap: 16px; margin-top: 14px;
-      padding-top: 14px; border-top: 1px solid var(--border);
-      flex-wrap: wrap;
-    }
-    .legend-item { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--muted); }
-    .legend-dot { width: 8px; height: 8px; border-radius: 50%; }
-
-    .fault-chains-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
-    .fc-card {
-      background: rgba(255,255,255,0.025);
-      border: 1px solid rgba(255,255,255,0.07);
-      border-radius: 12px; padding: 14px;
-    }
-    .fc-title { font-size: 12px; font-weight: 700; display: flex; align-items: center; gap: 6px; margin-bottom: 6px; }
-    .fc-title .fc-root-name { font-family: var(--mono); color: var(--no); }
-    .fc-desc { font-size: 11px; color: var(--muted); margin-bottom: 10px; line-height: 1.4; }
-    .fc-affected { display: flex; gap: 5px; flex-wrap: wrap; }
-    .fc-chip {
-      font-size: 10px; font-family: var(--mono);
-      background: rgba(255,255,255,0.05);
-      border: 1px solid var(--border);
-      border-radius: 5px; padding: 2px 7px;
-      color: var(--muted);
-    }
-
-    .empty { text-align: center; padding: 40px; color: var(--muted); font-size: 13px; }
-    .spin { animation: spin 1s linear infinite; }
-    @keyframes spin { to { transform: rotate(360deg); } }
-
-    @media (max-width: 1100px) {
-      .stats-grid { grid-template-columns: repeat(2, 1fr); }
-      .service-grid { grid-template-columns: repeat(2, 1fr); }
-      .metrics-grid { grid-template-columns: 1fr; }
-      .fault-chains-grid { grid-template-columns: repeat(2, 1fr); }
+    /* Metrics */
+    .metrics-golden { display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin-bottom:20px; }
+    .golden-card { background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08); border-radius:12px; padding:14px 16px; }
+    .golden-label { font-size:9px; color:var(--muted); text-transform:uppercase; letter-spacing:0.7px; margin-bottom:6px; display:flex; align-items:center; gap:5px; }
+    .golden-val { font-size:22px; font-weight:700; font-family:var(--mono); line-height:1; }
+    .golden-sub { font-size:10px; color:#3f3f46; margin-top:4px; }
+    .metrics-charts-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:20px; }
+    .mcrd { background:rgba(255,255,255,0.025); border:1px solid rgba(255,255,255,0.07); border-radius:12px; padding:13px 15px; }
+    .mcrd-hdr { display:flex; align-items:center; justify-content:space-between; margin-bottom:8px; }
+    .mcrd-name { display:flex; align-items:center; gap:7px; font-size:12px; font-weight:600; }
+    .mcrd-cur { font-family:var(--mono); font-size:12px; font-weight:700; }
+    .mcrd-stats { display:grid; grid-template-columns:repeat(3,1fr); gap:4px; margin-bottom:8px; }
+    .mstat { background:rgba(0,0,0,0.2); border-radius:5px; padding:4px 7px; }
+    .mstat-l { font-size:8px; color:#3f3f46; text-transform:uppercase; letter-spacing:0.4px; margin-bottom:1px; }
+    .mstat-v { font-size:10px; font-weight:600; font-family:var(--mono); color:#a1a1aa; }
+    .mcrd-wrap { position:relative; height:80px; }
+    .mcrd-inc { margin-top:6px; display:flex; gap:5px; flex-wrap:wrap; align-items:center; }
+    .inc-pill { font-size:9px; font-family:var(--mono); background:rgba(239,68,68,0.1); color:#ef4444; border:1px solid rgba(239,68,68,0.2); padding:1px 6px; border-radius:3px; }
+    .heatmap-inner { background:rgba(255,255,255,0.025); border:1px solid rgba(255,255,255,0.07); border-radius:12px; padding:14px 16px; margin-bottom:20px; }
+    .hm-grid { display:grid; gap:2px; }
+    .hm-cell { border-radius:2px; height:14px; }
+    .hm-legend { display:flex; gap:14px; margin-top:10px; padding-top:10px; border-top:1px solid rgba(255,255,255,0.05); flex-wrap:wrap; }
+    .hm-legend-item { display:flex; align-items:center; gap:4px; font-size:10px; color:var(--muted); }
+    .hm-legend-box { width:10px; height:10px; border-radius:2px; }
+    .sla-grid { display:grid; grid-template-columns:repeat(5,1fr); gap:8px; margin-bottom:20px; }
+    .sla-card { background:rgba(255,255,255,0.025); border:1px solid rgba(255,255,255,0.07); border-radius:10px; padding:11px 12px; }
+    .sla-name { font-size:10px; color:var(--muted); margin-bottom:7px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .sla-bar-bg { background:rgba(255,255,255,0.06); border-radius:3px; height:4px; margin-bottom:7px; overflow:hidden; }
+    .sla-bar-fg { height:100%; border-radius:3px; }
+    .sla-pct { font-size:16px; font-weight:700; font-family:var(--mono); line-height:1; }
+    .err-inner { background:rgba(255,255,255,0.025); border:1px solid rgba(255,255,255,0.07); border-radius:12px; padding:13px 15px; margin-bottom:20px; }
+    .err-wrap { position:relative; height:70px; }
+    .mttr-grid { display:grid; grid-template-columns:repeat(5,1fr); gap:8px; }
+    /* Topology */
+    .dep-graph-wrap { background:rgba(255,255,255,0.025); border:1px solid rgba(255,255,255,0.07); border-radius:14px; padding:20px; margin-bottom:16px; }
+    #depCanvas { width:100%; height:360px; display:block; }
+    .topo-legend { display:flex; gap:16px; margin-top:14px; padding-top:14px; border-top:1px solid var(--border); flex-wrap:wrap; }
+    .legend-item { display:flex; align-items:center; gap:6px; font-size:11px; color:var(--muted); }
+    .legend-dot { width:8px; height:8px; border-radius:50%; }
+    .fault-chains-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; }
+    .fc-card { background:rgba(255,255,255,0.025); border:1px solid rgba(255,255,255,0.07); border-radius:12px; padding:14px; }
+    .fc-title { font-size:12px; font-weight:700; display:flex; align-items:center; gap:6px; margin-bottom:6px; }
+    .fc-title .fc-root-name { font-family:var(--mono); color:var(--no); }
+    .fc-desc { font-size:11px; color:var(--muted); margin-bottom:10px; line-height:1.4; }
+    .fc-affected { display:flex; gap:5px; flex-wrap:wrap; }
+    .fc-chip { font-size:10px; font-family:var(--mono); background:rgba(255,255,255,0.05); border:1px solid var(--border); border-radius:5px; padding:2px 7px; color:var(--muted); }
+    .empty { text-align:center; padding:40px; color:var(--muted); font-size:13px; }
+    .spin { animation:spin 1s linear infinite; }
+    @keyframes spin { to { transform:rotate(360deg); } }
+    @media (max-width:1100px) {
+      .stats-grid,.metrics-golden { grid-template-columns:repeat(2,1fr); }
+      .service-grid,.metrics-charts-grid { grid-template-columns:repeat(2,1fr); }
+      .fault-chains-grid,.sla-grid,.mttr-grid { grid-template-columns:repeat(2,1fr); }
     }
   </style>
 </head>
 <body>
-
-<!-- Sidebar -->
 <aside class="sidebar">
   <div class="sidebar-logo">
     <div class="logo-icon">⬡</div>
     <span class="logo-text">FaultLens</span>
   </div>
-
   <nav class="sidebar-nav">
     <button class="nav-item active" onclick="switchTab('overview',this)">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
-      Overview
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>Overview
     </button>
     <button class="nav-item" onclick="switchTab('services',this)">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.22 4.22l2.12 2.12M17.66 17.66l2.12 2.12M2 12h3M19 12h3M4.22 19.78l2.12-2.12M17.66 6.34l2.12-2.12"/></svg>
-      Services
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.22 4.22l2.12 2.12M17.66 17.66l2.12 2.12M2 12h3M19 12h3M4.22 19.78l2.12-2.12M17.66 6.34l2.12-2.12"/></svg>Services
     </button>
     <button class="nav-item" onclick="switchTab('metrics',this)">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
-      Metrics
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>Metrics
     </button>
     <button class="nav-item" onclick="switchTab('incidents',this)">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-      Incidents
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>Incidents
       <span class="nav-badge-count" id="navIncBadge" style="display:none"></span>
     </button>
     <button class="nav-item" onclick="switchTab('topology',this)">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
-      Topology
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>Topology
     </button>
   </nav>
-
   <div class="sidebar-footer">
     <div class="status-card">
       <div class="status-row">
@@ -395,7 +221,6 @@
   </div>
 </aside>
 
-<!-- Main -->
 <main class="main">
   <div class="topbar">
     <div>
@@ -412,49 +237,24 @@
   </div>
 
   <div class="content">
-
     <!-- OVERVIEW -->
     <div class="panel active" id="panel-overview">
       <div class="stats-grid">
-        <div class="stat-card">
-          <div class="stat-label">Total Services</div>
-          <div class="stat-value" id="statTotal">—</div>
-          <div class="stat-sub">Monitored endpoints</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-label">Healthy</div>
-          <div class="stat-value green" id="statHealthy">—</div>
-          <div class="stat-sub" id="statHealthySub">All systems operational</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-label">Incidents (unique)</div>
-          <div class="stat-value red" id="statIncidents">—</div>
-          <div class="stat-sub" id="statIncSub">Grouped anomalies</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-label">LLM Diagnoses</div>
-          <div class="stat-value accent" id="statLLM">—</div>
-          <div class="stat-sub">Claude AI analyses</div>
-        </div>
+        <div class="stat-card"><div class="stat-label">Total Services</div><div class="stat-value" id="statTotal">—</div><div class="stat-sub">Monitored endpoints</div></div>
+        <div class="stat-card"><div class="stat-label">Healthy</div><div class="stat-value green" id="statHealthy">—</div><div class="stat-sub" id="statHealthySub">All systems operational</div></div>
+        <div class="stat-card"><div class="stat-label">Incidents (unique)</div><div class="stat-value red" id="statIncidents">—</div><div class="stat-sub" id="statIncSub">Grouped anomalies</div></div>
+        <div class="stat-card"><div class="stat-label">LLM Diagnoses</div><div class="stat-value accent" id="statLLM">—</div><div class="stat-sub">Claude AI analyses</div></div>
       </div>
-
       <div class="section">
         <div class="section-header">
-          <div class="section-title">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.22 4.22l2.12 2.12M17.66 17.66l2.12 2.12M2 12h3M19 12h3"/></svg>
-            Service Status
-          </div>
+          <div class="section-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.22 4.22l2.12 2.12M17.66 17.66l2.12 2.12M2 12h3M19 12h3"/></svg>Service Status</div>
           <span id="systemBadge" class="badge badge-gray">Loading…</span>
         </div>
         <div class="service-grid" id="serviceGridOverview"></div>
       </div>
-
       <div class="section">
         <div class="section-header">
-          <div class="section-title">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>
-            Recent Incidents
-          </div>
+          <div class="section-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>Recent Incidents</div>
           <button class="btn btn-ghost" style="font-size:11px;padding:5px 10px" onclick="switchTabByName('incidents')">View all →</button>
         </div>
         <div class="incident-list" id="incidentListOverview"></div>
@@ -465,10 +265,7 @@
     <div class="panel" id="panel-services">
       <div class="section">
         <div class="section-header">
-          <div class="section-title">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/></svg>
-            All Services
-          </div>
+          <div class="section-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/></svg>All Services</div>
           <span style="font-size:11px;color:var(--muted)">Uptime calculated over last 24h</span>
         </div>
         <div class="service-grid" id="serviceGridFull"></div>
@@ -477,35 +274,86 @@
 
     <!-- METRICS -->
     <div class="panel" id="panel-metrics">
-      <div class="section">
-        <div class="section-header">
-          <div class="section-title">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
-            Response Time
+      <div class="section-header" style="margin-bottom:16px">
+        <div class="section-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>System Metrics</div>
+        <div style="display:flex;align-items:center;gap:8px">
+          <div style="display:flex;gap:4px" id="timeRangeBtns">
+            <button class="time-range-btn active" onclick="setTimeRange('40polls',this)">40 polls</button>
+            <button class="time-range-btn" onclick="setTimeRange('0.5',this)">30m</button>
+            <button class="time-range-btn" onclick="setTimeRange('1',this)">1h</button>
+            <button class="time-range-btn" onclick="setTimeRange('6',this)">6h</button>
+            <button class="time-range-btn" onclick="setTimeRange('24',this)">24h</button>
           </div>
-          <div style="display:flex;align-items:center;gap:8px">
-            <div style="display:flex;gap:4px" id="timeRangeBtns">
-              <button class="time-range-btn active" onclick="setTimeRange('40polls',this)">40 polls</button>
-              <button class="time-range-btn" onclick="setTimeRange('0.5',this)">30m</button>
-              <button class="time-range-btn" onclick="setTimeRange('1',this)">1h</button>
-              <button class="time-range-btn" onclick="setTimeRange('6',this)">6h</button>
-              <button class="time-range-btn" onclick="setTimeRange('24',this)">24h</button>
-            </div>
-            <span style="font-size:11px;color:var(--muted)">Auto-refreshes every 20s</span>
-          </div>
+          <span style="font-size:11px;color:var(--muted)">Auto-refreshes every 20s</span>
         </div>
-        <div class="metrics-grid" id="metricsGrid"></div>
       </div>
+
+      <div class="metrics-golden">
+        <div class="golden-card" style="border-top:2px solid #818cf8;border-radius:0 0 12px 12px">
+          <div class="golden-label"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:10px;height:10px"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>P95 latency</div>
+          <div class="golden-val" style="color:#818cf8" id="gs-p95">—</div>
+          <div class="golden-sub" id="gs-avg-sub">avg — across services</div>
+        </div>
+        <div class="golden-card" style="border-top:2px solid var(--yes);border-radius:0 0 12px 12px">
+          <div class="golden-label"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:10px;height:10px"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>Poll rate</div>
+          <div class="golden-val" style="color:var(--yes)">10/min</div>
+          <div class="golden-sub">5 services · 2 polls/min</div>
+        </div>
+        <div class="golden-card" style="border-top:2px solid var(--no);border-radius:0 0 12px 12px">
+          <div class="golden-label"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:10px;height:10px"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>Error rate</div>
+          <div class="golden-val" style="color:var(--no)" id="gs-err">—</div>
+          <div class="golden-sub" id="gs-err-sub">failed health checks</div>
+        </div>
+        <div class="golden-card" style="border-top:2px solid var(--yes);border-radius:0 0 12px 12px">
+          <div class="golden-label"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:10px;height:10px"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>Healthy now</div>
+          <div class="golden-val" style="color:var(--yes)" id="gs-healthy">—</div>
+          <div class="golden-sub" id="gs-healthy-sub">services up</div>
+        </div>
+      </div>
+
+      <div class="section-header" style="margin-bottom:10px">
+        <div class="section-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>Response time — P50 · P95 · Max per service</div>
+      </div>
+      <div class="metrics-charts-grid" id="metricsGrid"></div>
+
+      <div class="section-header" style="margin-bottom:10px">
+        <div class="section-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>Health heatmap — status per poll</div>
+      </div>
+      <div class="heatmap-inner">
+        <div id="hmGrid"></div>
+        <div class="hm-legend">
+          <div class="hm-legend-item"><div class="hm-legend-box" style="background:#22c55e"></div>Healthy</div>
+          <div class="hm-legend-item"><div class="hm-legend-box" style="background:#eab308"></div>High latency</div>
+          <div class="hm-legend-item"><div class="hm-legend-box" style="background:#ef4444"></div>Down</div>
+          <div class="hm-legend-item"><div class="hm-legend-box" style="background:#312e81;border:1px solid #4338ca"></div>Incident</div>
+        </div>
+      </div>
+
+      <div class="section-header" style="margin-bottom:10px">
+        <div class="section-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>Error rate over time</div>
+      </div>
+      <div class="err-inner">
+        <div class="err-wrap">
+          <canvas id="errChart" role="img" aria-label="Error rate over time">Error rate per polling interval.</canvas>
+        </div>
+      </div>
+
+      <div class="section-header" style="margin-bottom:10px">
+        <div class="section-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>SLA compliance — uptime 24h · target 99%</div>
+      </div>
+      <div class="sla-grid" id="slaGrid"></div>
+
+      <div class="section-header" style="margin:16px 0 10px">
+        <div class="section-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>Mean time to recovery</div>
+      </div>
+      <div class="mttr-grid" id="mttrGrid"></div>
     </div>
 
     <!-- INCIDENTS -->
     <div class="panel" id="panel-incidents">
       <div class="section">
         <div class="section-header">
-          <div class="section-title">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>
-            Incident Log
-          </div>
+          <div class="section-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>Incident Log</div>
           <span id="incidentCountBadge" class="badge badge-gray">0</span>
         </div>
         <div class="incident-list" id="incidentListFull"></div>
@@ -516,735 +364,556 @@
     <div class="panel" id="panel-topology">
       <div class="section">
         <div class="section-header">
-          <div class="section-title">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/></svg>
-            Service Dependency Graph
-          </div>
+          <div class="section-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/></svg>Service Dependency Graph</div>
         </div>
         <div class="dep-graph-wrap">
           <canvas id="depCanvas"></canvas>
           <div class="topo-legend">
-            <div class="legend-item"><div class="legend-dot" style="background:var(--yes)"></div> Healthy</div>
-            <div class="legend-item"><div class="legend-dot" style="background:var(--warn)"></div> Warning</div>
-            <div class="legend-item"><div class="legend-dot" style="background:var(--no)"></div> Down</div>
-            <div class="legend-item"><div class="legend-dot" style="background:var(--muted)"></div> Unknown</div>
+            <div class="legend-item"><div class="legend-dot" style="background:var(--yes)"></div>Healthy</div>
+            <div class="legend-item"><div class="legend-dot" style="background:var(--warn)"></div>Warning</div>
+            <div class="legend-item"><div class="legend-dot" style="background:var(--no)"></div>Down</div>
+            <div class="legend-item"><div class="legend-dot" style="background:var(--muted)"></div>Unknown</div>
             <span style="margin-left:auto;font-size:11px;color:var(--muted)">Arrow → depends on</span>
           </div>
         </div>
-
         <div class="section-header" style="margin-top:8px">
-          <div class="section-title">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>
-            Fault Propagation Chains
-          </div>
+          <div class="section-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>Fault Propagation Chains</div>
         </div>
         <div class="fault-chains-grid" id="faultChainsGrid"></div>
       </div>
     </div>
-
   </div>
 </main>
 
 <script>
-// ── State ──────────────────────────────────────────────────────────────────
-let _services = {};
-let _incidents = [];
-let _serviceMap = null;
-let _metricsHistory = [];
-let _charts = {};
-let _activePanel = 'overview';
-let _timeRange = '40polls';
-let _uptimeData = {};
-
-const TABS = {
-  overview:  ['System Overview',       'Real-time microservice monitoring with LLM fault diagnosis'],
-  services:  ['Services',              'Health status and metrics for all monitored endpoints'],
-  metrics:   ['Metrics',               'Response time history with anomaly annotations'],
-  incidents: ['Incident Log',          'Detected anomalies with LLM root cause analysis'],
-  topology:  ['Service Topology',      'Dependency graph and fault propagation chains'],
+let _services={},_incidents=[],_serviceMap=null,_metricsHistory=[],_charts={},_activePanel='overview',_timeRange='40polls',_uptimeData={};
+const TABS={
+  overview: ['System Overview','Real-time microservice monitoring with LLM fault diagnosis'],
+  services: ['Services','Health status and metrics for all monitored endpoints'],
+  metrics:  ['Metrics','Latency · error rate · SLA · heatmap · MTTR'],
+  incidents:['Incident Log','Detected anomalies with LLM root cause analysis'],
+  topology: ['Service Topology','Dependency graph and fault propagation chains'],
 };
 
-// ── Navigation ─────────────────────────────────────────────────────────────
-function switchTab(name, el) {
-  document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
-  if (el) el.classList.add('active');
-  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
-  document.getElementById('panel-' + name)?.classList.add('active');
-  _activePanel = name;
-  const [title, sub] = TABS[name] || ['', ''];
-  document.getElementById('pageTitle').textContent = title;
-  document.getElementById('pageSubtitle').textContent = sub;
-  if (name === 'topology') renderDepGraph();
-  if (name === 'metrics')  renderMetrics();
+function switchTab(name,el){
+  document.querySelectorAll('.nav-item').forEach(b=>b.classList.remove('active'));
+  if(el)el.classList.add('active');
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+  document.getElementById('panel-'+name)?.classList.add('active');
+  _activePanel=name;
+  const[title,sub]=TABS[name]||['',''];
+  document.getElementById('pageTitle').textContent=title;
+  document.getElementById('pageSubtitle').textContent=sub;
+  if(name==='topology')renderDepGraph();
+  if(name==='metrics')renderMetrics();
 }
-
-function switchTabByName(name) {
-  const order = ['overview', 'services', 'metrics', 'incidents', 'topology'];
-  document.querySelectorAll('.nav-item').forEach((btn, i) => {
-    if (order[i] === name) switchTab(name, btn);
-  });
+function switchTabByName(name){
+  const order=['overview','services','metrics','incidents','topology'];
+  document.querySelectorAll('.nav-item').forEach((btn,i)=>{if(order[i]===name)switchTab(name,btn);});
 }
-
-// ── Time range selector ────────────────────────────────────────────────────
-async function setTimeRange(range, btn) {
-  _timeRange = range;
-  document.querySelectorAll('.time-range-btn').forEach(b => b.classList.remove('active'));
-  if (btn) btn.classList.add('active');
-
-  const url = range === '40polls'
-    ? '/api/metrics/history?limit=40'
-    : `/api/metrics/history?since_hours=${range}`;
-
-  const hist = await fetchJSON(url);
-  if (hist) _metricsHistory = hist;
+async function setTimeRange(range,btn){
+  _timeRange=range;
+  document.querySelectorAll('.time-range-btn').forEach(b=>b.classList.remove('active'));
+  if(btn)btn.classList.add('active');
+  const url=range==='40polls'?'/api/metrics/history?limit=40':`/api/metrics/history?since_hours=${range}`;
+  const hist=await fetchJSON(url);
+  if(hist)_metricsHistory=hist;
   renderMetrics();
 }
-
-// ── Fetch ──────────────────────────────────────────────────────────────────
-async function fetchJSON(url) {
-  try {
-    const r = await fetch(url);
-    if (!r.ok) throw new Error(r.status);
-    return await r.json();
-  } catch { return null; }
-}
-
-async function refreshAll() {
-  const icon = document.getElementById('refreshIcon');
+async function fetchJSON(url){try{const r=await fetch(url);if(!r.ok)throw new Error(r.status);return await r.json();}catch{return null;}}
+async function refreshAll(){
+  const icon=document.getElementById('refreshIcon');
   icon.classList.add('spin');
-  try {
-    const histUrl = _timeRange === '40polls'
-      ? '/api/metrics/history?limit=40'
-      : `/api/metrics/history?since_hours=${_timeRange}`;
-
-    const [svc, inc, map, eng, hist, uptime] = await Promise.all([
-      fetchJSON('/api/services'),
-      fetchJSON('/api/incidents'),
-      fetchJSON('/api/service-map'),
-      fetchJSON('/api/diagnostic-engine/health'),
-      fetchJSON(histUrl),
-      fetchJSON('/api/metrics/uptime?hours=24'),
+  try{
+    const histUrl=_timeRange==='40polls'?'/api/metrics/history?limit=40':`/api/metrics/history?since_hours=${_timeRange}`;
+    const[svc,inc,map,eng,hist,uptime]=await Promise.all([
+      fetchJSON('/api/services'),fetchJSON('/api/incidents'),fetchJSON('/api/service-map'),
+      fetchJSON('/api/diagnostic-engine/health'),fetchJSON(histUrl),fetchJSON('/api/metrics/uptime?hours=24'),
     ]);
-
-    if (svc)  { _services = svc; updateSidebarStatus(true); } else updateSidebarStatus(false);
-    if (inc)  _incidents = inc;
-    if (map)  _serviceMap = map;
-    if (hist) _metricsHistory = hist;
-    if (uptime) {
-      _uptimeData = {};
-      for (const r of uptime) _uptimeData[r.service_name] = r;
-    }
-
-    const llmDot = document.getElementById('llmDot');
-    const llmTxt = document.getElementById('llmStatusText');
-    if (eng?.llm_available) {
-      llmDot.className = 'status-dot dot-green';
-      llmTxt.textContent = 'Available'; llmTxt.style.color = 'var(--yes)';
-    } else {
-      llmDot.className = 'status-dot dot-red';
-      llmTxt.textContent = 'Offline'; llmTxt.style.color = 'var(--no)';
-    }
-
+    if(svc){_services=svc;updateSidebarStatus(true);}else updateSidebarStatus(false);
+    if(inc)_incidents=inc;
+    if(map)_serviceMap=map;
+    if(hist)_metricsHistory=hist;
+    if(uptime){_uptimeData={};for(const r of uptime)_uptimeData[r.service_name]=r;}
+    const llmDot=document.getElementById('llmDot'),llmTxt=document.getElementById('llmStatusText');
+    if(eng?.llm_available){llmDot.className='status-dot dot-green';llmTxt.textContent='Available';llmTxt.style.color='var(--yes)';}
+    else{llmDot.className='status-dot dot-red';llmTxt.textContent='Offline';llmTxt.style.color='var(--no)';}
     renderAll();
-    document.getElementById('lastUpdated').textContent =
-      'Updated ' + new Date().toLocaleTimeString('en-US', {hour:'2-digit',minute:'2-digit',second:'2-digit'});
-  } finally { icon.classList.remove('spin'); }
+    document.getElementById('lastUpdated').textContent='Updated '+new Date().toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+  }finally{icon.classList.remove('spin');}
 }
+function updateSidebarStatus(ok){
+  const dot=document.getElementById('collectorDot'),txt=document.getElementById('collectorStatusText');
+  dot.className='status-dot '+(ok?'dot-green':'dot-red');
+  txt.textContent=ok?'Online':'Offline';txt.style.color=ok?'var(--yes)':'var(--no)';
+}
+function statusClass(s){
+  if(!s)return'unknown';s=s.toLowerCase();
+  if(s==='healthy')return'healthy';
+  if(['down','error','timeout','critical','unhealthy'].includes(s))return'down';
+  if(['warning','degraded','high_latency'].includes(s))return'unhealthy';
+  return'unknown';
+}
+function statusBadge(s){const cls=statusClass(s),map={healthy:'green',down:'red',unhealthy:'yellow',unknown:'gray'};return`<span class="badge badge-${map[cls]||'gray'}">${s||'unknown'}</span>`;}
+function fmtMs(rt){if(rt==null)return'—';return Math.round(parseFloat(rt)*1000)+'ms';}
+function msClass(rt){if(rt==null)return'';const ms=parseFloat(rt)*1000;return ms<100?'green':ms<500?'warn':'red';}
+function fmtTime(ts){if(!ts)return'—';return new Date(ts).toLocaleString('en-US',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit',second:'2-digit'});}
+function p95arr(arr){const s=[...arr].sort((a,b)=>a-b);return s[Math.floor(s.length*.95)]||0;}
+function avgArr(arr){return arr.length?arr.reduce((a,b)=>a+b,0)/arr.length:0;}
 
-function updateSidebarStatus(ok) {
-  const dot = document.getElementById('collectorDot');
-  const txt = document.getElementById('collectorStatusText');
-  dot.className = 'status-dot ' + (ok ? 'dot-green' : 'dot-red');
-  txt.textContent = ok ? 'Online' : 'Offline';
-  txt.style.color = ok ? 'var(--yes)' : 'var(--no)';
-}
-
-// ── Helpers ────────────────────────────────────────────────────────────────
-function statusClass(s) {
-  if (!s) return 'unknown';
-  s = s.toLowerCase();
-  if (s === 'healthy') return 'healthy';
-  if (['down','error','timeout','critical','unhealthy'].includes(s)) return 'down';
-  if (['warning','degraded','high_latency'].includes(s)) return 'unhealthy';
-  return 'unknown';
-}
-function statusBadge(s) {
-  const cls = statusClass(s);
-  const map = {healthy:'green', down:'red', unhealthy:'yellow', unknown:'gray'};
-  return `<span class="badge badge-${map[cls]||'gray'}">${s||'unknown'}</span>`;
-}
-function fmtMs(rt) {
-  if (rt == null) return '—';
-  return Math.round(parseFloat(rt) * 1000) + 'ms';
-}
-function msClass(rt) {
-  if (rt == null) return '';
-  const ms = parseFloat(rt) * 1000;
-  if (ms < 100) return 'green';
-  if (ms < 500) return 'warn';
-  return 'red';
-}
-function fmtTime(ts) {
-  if (!ts) return '—';
-  return new Date(ts).toLocaleString('en-US', {month:'short',day:'numeric',hour:'2-digit',minute:'2-digit',second:'2-digit'});
-}
-
-// ── Incident grouping ──────────────────────────────────────────────────────
-function groupIncidents(incidents) {
-  const map = {};
-  for (const inc of incidents) {
-    const key = `${inc.service_name}|${inc.incident_type}|${inc.severity}`;
-    if (!map[key]) {
-      map[key] = { ...inc, count: 1 };
-    } else {
+function groupIncidents(incidents){
+  const map={};
+  for(const inc of incidents){
+    const key=`${inc.service_name}|${inc.incident_type}|${inc.severity}`;
+    if(!map[key]){map[key]={...inc,count:1};}
+    else{
       map[key].count++;
-      if ((inc.created_at || '') > (map[key].created_at || '')) {
-        map[key].created_at = inc.created_at;
-        if (inc.diagnosis?.diagnosis_source === 'claude_api') {
-          map[key].diagnosis = inc.diagnosis;
-          map[key].id = inc.id;
-        }
+      if((inc.created_at||'')>(map[key].created_at||'')){
+        map[key].created_at=inc.created_at;
+        if(inc.diagnosis?.diagnosis_source==='claude_api'){map[key].diagnosis=inc.diagnosis;map[key].id=inc.id;}
       }
     }
   }
-  return Object.values(map).sort((a,b) => (b.created_at||'').localeCompare(a.created_at||''));
+  return Object.values(map).sort((a,b)=>(b.created_at||'').localeCompare(a.created_at||''));
 }
 
-// ── Render all ─────────────────────────────────────────────────────────────
-function renderAll() {
+function renderAll(){
   renderStats();
-  renderServiceGrid('serviceGridOverview', 6);
-  renderServiceGrid('serviceGridFull', null);
-  renderIncidentList('incidentListOverview', 5, true);
-  renderIncidentList('incidentListFull', null, false);
+  renderServiceGrid('serviceGridOverview',6);renderServiceGrid('serviceGridFull',null);
+  renderIncidentList('incidentListOverview',5);renderIncidentList('incidentListFull',null);
   updateIncidentBadge();
-  if (_activePanel === 'topology') renderDepGraph();
-  if (_activePanel === 'metrics')  renderMetrics();
+  if(_activePanel==='topology')renderDepGraph();
+  if(_activePanel==='metrics')renderMetrics();
 }
 
-// ── Stats ──────────────────────────────────────────────────────────────────
-function renderStats() {
-  const svcs = Object.values(_services);
-  const total = svcs.length;
-  const healthy = svcs.filter(s => statusClass(s.status) === 'healthy').length;
-  const grouped = groupIncidents(_incidents);
-  const llmCount = grouped.filter(g => g.diagnosis?.diagnosis_source === 'claude_api').length;
-
-  document.getElementById('statTotal').textContent   = total || '—';
-  document.getElementById('statHealthy').textContent = healthy || '0';
-  document.getElementById('statIncidents').textContent = grouped.length;
-  document.getElementById('statLLM').textContent = llmCount;
-
-  const sub = document.getElementById('statHealthySub');
-  if (total && healthy === total) sub.textContent = 'All systems operational';
-  else if (total) sub.textContent = `${total - healthy} service(s) degraded`;
-
-  const sub2 = document.getElementById('statIncSub');
-  sub2.textContent = `${_incidents.length} total events`;
-
-  const badge = document.getElementById('systemBadge');
-  if (!total) return;
-  const down = svcs.filter(s => statusClass(s.status) === 'down').length;
-  if (down === 0 && healthy === total) {
-    badge.className = 'badge badge-green'; badge.textContent = 'All Systems Operational';
-  } else if (down > 0) {
-    badge.className = 'badge badge-red'; badge.textContent = `${down} Service(s) Down`;
-  } else {
-    badge.className = 'badge badge-yellow'; badge.textContent = 'Degraded';
-  }
+function renderStats(){
+  const svcs=Object.values(_services),total=svcs.length;
+  const healthy=svcs.filter(s=>statusClass(s.status)==='healthy').length;
+  const grouped=groupIncidents(_incidents);
+  const llmCount=grouped.filter(g=>g.diagnosis?.diagnosis_source==='claude_api').length;
+  document.getElementById('statTotal').textContent=total||'—';
+  document.getElementById('statHealthy').textContent=healthy||'0';
+  document.getElementById('statIncidents').textContent=grouped.length;
+  document.getElementById('statLLM').textContent=llmCount;
+  const sub=document.getElementById('statHealthySub');
+  if(total&&healthy===total)sub.textContent='All systems operational';
+  else if(total)sub.textContent=`${total-healthy} service(s) degraded`;
+  document.getElementById('statIncSub').textContent=`${_incidents.length} total events`;
+  const badge=document.getElementById('systemBadge');if(!total)return;
+  const down=svcs.filter(s=>statusClass(s.status)==='down').length;
+  if(down===0&&healthy===total){badge.className='badge badge-green';badge.textContent='All Systems Operational';}
+  else if(down>0){badge.className='badge badge-red';badge.textContent=`${down} Service(s) Down`;}
+  else{badge.className='badge badge-yellow';badge.textContent='Degraded';}
 }
 
-// ── Service grid ───────────────────────────────────────────────────────────
-function renderServiceGrid(id, limit) {
-  const el = document.getElementById(id);
-  if (!el) return;
-  const entries = Object.entries(_services);
-  const items = limit ? entries.slice(0, limit) : entries;
-  if (!items.length) { el.innerHTML = '<div class="empty">No service data available</div>'; return; }
-
-  el.innerHTML = items.map(([name, s]) => {
-    const sc = statusClass(s.status);
-    const rt = fmtMs(s.last_response_time);
-    const rtc = msClass(s.last_response_time);
-    const lc = s.last_check ? new Date(s.last_check).toLocaleTimeString('en-US') : '—';
-    const fails = s.consecutive_failures || 0;
-
-    // Uptime data
-    const uptime = _uptimeData[name];
-    const uptimePct = uptime?.uptime_pct != null ? uptime.uptime_pct + '%' : '—';
-    const uptimeClass = uptime?.uptime_pct == null ? '' : uptime.uptime_pct >= 99 ? 'green' : uptime.uptime_pct >= 95 ? 'warn' : 'red';
-    const avgMs = uptime?.avg_response_ms != null ? Math.round(uptime.avg_response_ms) + 'ms' : '—';
-
-    return `<div class="service-card ${sc}">
-      <div class="svc-header">
-        <div class="svc-name-row">
-          <div class="svc-dot ${s.status || 'unknown'}"></div>
-          <span class="svc-name">${name}</span>
-        </div>
-        ${statusBadge(s.status)}
-      </div>
+function renderServiceGrid(id,limit){
+  const el=document.getElementById(id);if(!el)return;
+  const entries=Object.entries(_services),items=limit?entries.slice(0,limit):entries;
+  if(!items.length){el.innerHTML='<div class="empty">No service data available</div>';return;}
+  el.innerHTML=items.map(([name,s])=>{
+    const sc=statusClass(s.status),rt=fmtMs(s.last_response_time),rtc=msClass(s.last_response_time);
+    const lc=s.last_check?new Date(s.last_check).toLocaleTimeString('en-US'):'—';
+    const fails=s.consecutive_failures||0;
+    const uptime=_uptimeData[name];
+    const uptimePct=uptime?.uptime_pct!=null?uptime.uptime_pct+'%':'—';
+    const uptimeClass=uptime?.uptime_pct==null?'':uptime.uptime_pct>=99?'green':uptime.uptime_pct>=95?'warn':'red';
+    const avgMs=uptime?.avg_response_ms!=null?Math.round(uptime.avg_response_ms)+'ms':'—';
+    return`<div class="service-card ${sc}">
+      <div class="svc-header"><div class="svc-name-row"><div class="svc-dot ${s.status||'unknown'}"></div><span class="svc-name">${name}</span></div>${statusBadge(s.status)}</div>
       <div class="svc-metrics">
-        <div class="svc-metric">
-          <div class="svc-metric-label">Response</div>
-          <div class="svc-metric-value ${rtc}">${rt}</div>
-        </div>
-        <div class="svc-metric">
-          <div class="svc-metric-label">Last Check</div>
-          <div class="svc-metric-value">${lc}</div>
-        </div>
-        <div class="svc-metric">
-          <div class="svc-metric-label">Uptime 24h</div>
-          <div class="svc-metric-value ${uptimeClass}">${uptimePct}</div>
-        </div>
-        <div class="svc-metric">
-          <div class="svc-metric-label">Avg Response</div>
-          <div class="svc-metric-value">${avgMs}</div>
-        </div>
+        <div class="svc-metric"><div class="svc-metric-label">Response</div><div class="svc-metric-value ${rtc}">${rt}</div></div>
+        <div class="svc-metric"><div class="svc-metric-label">Last Check</div><div class="svc-metric-value">${lc}</div></div>
+        <div class="svc-metric"><div class="svc-metric-label">Uptime 24h</div><div class="svc-metric-value ${uptimeClass}">${uptimePct}</div></div>
+        <div class="svc-metric"><div class="svc-metric-label">Avg Response</div><div class="svc-metric-value">${avgMs}</div></div>
       </div>
-      ${fails > 0 ? `<div class="svc-failures"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:11px;height:11px"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>${fails} consecutive failures</div>` : ''}
+      ${fails>0?`<div class="svc-failures"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:11px;height:11px"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>${fails} consecutive failures</div>`:''}
     </div>`;
   }).join('');
 }
 
-// ── Incident list ──────────────────────────────────────────────────────────
-function renderIncidentList(id, limit, grouped) {
-  const el = document.getElementById(id);
-  if (!el) return;
-
-  const all = groupIncidents(_incidents);
-  const items = limit ? all.slice(0, limit) : all;
-
-  if (!items.length) { el.innerHTML = '<div class="empty">No incidents recorded</div>'; return; }
-
-  el.innerHTML = items.map((inc, idx) => {
-    const diag = inc.diagnosis;
-    const isLLM = diag?.diagnosis_source === 'claude_api';
-    const time = fmtTime(inc.created_at);
-    const conf = diag?.confidence ? Math.round(diag.confidence * 100) + '% confidence' : '';
-    let desc = inc.description || '';
-    const ci = desc.indexOf(': {');
-    if (ci > -1) desc = desc.substring(0, ci);
-    const incType = (inc.incident_type || '').replace(/_/g, ' ');
-
-    const diagButton = !isLLM && inc.id
-      ? `<button class="btn-diagnose" id="diagBtn-${id}-${idx}" onclick="runDiagnosis(${inc.id},'${id}',${idx},event)">🧠 Run LLM Diagnosis</button>`
-      : '';
-
-    return `<div class="incident ${inc.severity}" onclick="toggleDiag('${id}',${idx})">
+function renderIncidentList(id,limit){
+  const el=document.getElementById(id);if(!el)return;
+  const all=groupIncidents(_incidents),items=limit?all.slice(0,limit):all;
+  if(!items.length){el.innerHTML='<div class="empty">No incidents recorded</div>';return;}
+  el.innerHTML=items.map((inc,idx)=>{
+    const diag=inc.diagnosis,isLLM=diag?.diagnosis_source==='claude_api';
+    const time=fmtTime(inc.created_at),conf=diag?.confidence?Math.round(diag.confidence*100)+'% confidence':'';
+    let desc=inc.description||'';const ci=desc.indexOf(': {');if(ci>-1)desc=desc.substring(0,ci);
+    const incType=(inc.incident_type||'').replace(/_/g,' ');
+    const diagButton=!isLLM&&inc.id?`<button class="btn-diagnose" id="diagBtn-${id}-${idx}" onclick="runDiagnosis(${inc.id},'${id}',${idx},event)">🧠 Run LLM Diagnosis</button>`:'';
+    return`<div class="incident ${inc.severity}" onclick="toggleDiag('${id}',${idx})">
       <div class="inc-header">
         <div class="inc-left">
           <span class="inc-service">${inc.service_name}</span>
           <span class="badge badge-${inc.severity==='critical'?'red':'yellow'}">${inc.severity}</span>
-          ${isLLM ? '<span class="badge badge-accent">Claude AI</span>' : diag ? '<span class="badge badge-gray">Heuristic</span>' : ''}
-          ${conf ? `<span style="font-size:11px;color:var(--muted)">${conf}</span>` : ''}
-          ${inc.count > 1 ? `<span class="inc-count">${inc.count}×</span>` : ''}
+          ${isLLM?'<span class="badge badge-accent">Claude AI</span>':diag?'<span class="badge badge-gray">Heuristic</span>':''}
+          ${conf?`<span style="font-size:11px;color:var(--muted)">${conf}</span>`:''}
+          ${inc.count>1?`<span class="inc-count">${inc.count}×</span>`:''}
         </div>
         <span class="inc-time">${time}</span>
       </div>
-      <div class="inc-type">${incType}${desc ? ' — ' + desc.substring(0, 100) : ''}</div>
-      ${diag ? renderDiag(`${id}-${idx}`, diag) : '<div style="font-size:11px;color:var(--muted);margin-top:4px">No diagnosis yet</div>'}
+      <div class="inc-type">${incType}${desc?' — '+desc.substring(0,100):''}</div>
+      ${diag?renderDiag(`${id}-${idx}`,diag):'<div style="font-size:11px;color:var(--muted);margin-top:4px">No diagnosis yet</div>'}
       ${diagButton}
     </div>`;
   }).join('');
 }
 
-function renderDiag(uid, diag) {
-  const isLLM = diag.diagnosis_source === 'claude_api';
-  const openClass = isLLM ? 'open' : '';
-
-  const chain = (diag.fault_chain || []).map((n, i) =>
-    (i===0 ? '<span class="chain-node root">'+n+'</span>' : '<span class="chain-node">'+n+'</span>') +
-    (i < (diag.fault_chain.length-1) ? '<span class="chain-arrow">→</span>' : '')
-  ).join('');
-  const recs = (diag.recommendations || []).slice(0, 3).map(r => {
-    const pc = r.priority === 'immediate' ? 'pri-immediate' : r.priority === 'short-term' ? 'pri-short-term' : 'pri-long-term';
-    return '<div class="rec-item"><div class="rec-header"><div class="rec-priority '+pc+'"></div><span class="rec-action">'+(r.action||'')+'</span></div>'+(r.command ? '<div class="rec-cmd">'+r.command+'</div>' : '')+'</div>';
+function renderDiag(uid,diag){
+  const isLLM=diag.diagnosis_source==='claude_api',openClass=isLLM?'open':'';
+  const chain=(diag.fault_chain||[]).map((n,i)=>
+    (i===0?'<span class="chain-node root">'+n+'</span>':'<span class="chain-node">'+n+'</span>')+(i<(diag.fault_chain.length-1)?'<span class="chain-arrow">→</span>':'')).join('');
+  const recs=(diag.recommendations||[]).slice(0,3).map(r=>{
+    const pc=r.priority==='immediate'?'pri-immediate':r.priority==='short-term'?'pri-short-term':'pri-long-term';
+    return'<div class="rec-item"><div class="rec-header"><div class="rec-priority '+pc+'"></div><span class="rec-action">'+(r.action||'')+'</span></div>'+(r.command?'<div class="rec-cmd">'+r.command+'</div>':'')+'</div>';
   }).join('');
-
-  let fp = '';
-  if (diag.failure_prediction) {
-    const fp_data = diag.failure_prediction;
-    const riskClass = (fp_data.cascade_risk==='critical'||fp_data.cascade_risk==='high') ? 'badge-red' : 'badge-yellow';
-    fp = '<div class="diag-row" style="background:rgba(239,68,68,0.05);border:1px solid rgba(239,68,68,0.15);border-radius:8px;padding:10px 12px;margin-top:4px">'
-      + '<div class="diag-row-label" style="color:var(--no)">⚡ Failure Prediction</div>'
-      + (fp_data.next_failures && fp_data.next_failures.length ? '<div class="diag-row-value" style="margin-bottom:4px"><strong>Next failures:</strong> '+fp_data.next_failures.join(', ')+'</div>' : '')
-      + (fp_data.time_estimate ? '<div class="diag-row-value" style="margin-bottom:4px"><strong>Time estimate:</strong> '+fp_data.time_estimate+'</div>' : '')
-      + (fp_data.prediction_reasoning ? '<div class="diag-row-value" style="font-size:12px;color:var(--muted)">'+fp_data.prediction_reasoning+'</div>' : '')
-      + (fp_data.cascade_risk ? '<div style="margin-top:6px"><span class="badge '+riskClass+'">cascade risk: '+fp_data.cascade_risk+'</span></div>' : '')
-      + '</div>';
+  let fp='';
+  if(diag.failure_prediction){
+    const d=diag.failure_prediction,rc=(d.cascade_risk==='critical'||d.cascade_risk==='high')?'badge-red':'badge-yellow';
+    fp='<div class="diag-row" style="background:rgba(239,68,68,0.05);border:1px solid rgba(239,68,68,0.15);border-radius:8px;padding:10px 12px;margin-top:4px">'
+      +'<div class="diag-row-label" style="color:var(--no)">⚡ Failure Prediction</div>'
+      +(d.next_failures?.length?'<div class="diag-row-value" style="margin-bottom:4px"><strong>Next failures:</strong> '+d.next_failures.join(', ')+'</div>':'')
+      +(d.time_estimate?'<div class="diag-row-value" style="margin-bottom:4px"><strong>Time estimate:</strong> '+d.time_estimate+'</div>':'')
+      +(d.prediction_reasoning?'<div class="diag-row-value" style="font-size:12px;color:var(--muted)">'+d.prediction_reasoning+'</div>':'')
+      +(d.cascade_risk?'<div style="margin-top:6px"><span class="badge '+rc+'">cascade risk: '+d.cascade_risk+'</span></div>':'')+'</div>';
   }
+  return'<div class="diag-panel '+openClass+'" id="diag-'+uid+'">'
+    +'<div class="diag-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg> '+(isLLM?'Claude AI Diagnosis':'Heuristic Diagnosis')+'</div>'
+    +(diag.root_cause?'<div class="diag-row"><div class="diag-row-label">Root Cause</div><div class="diag-row-value">'+diag.root_cause+'</div></div>':'')
+    +(chain?'<div class="diag-row"><div class="diag-row-label">Fault Chain</div><div class="fault-chain">'+chain+'</div></div>':'')
+    +(diag.fault_chain_explanation?'<div class="diag-row"><div class="diag-row-label">Explanation</div><div class="diag-row-value" style="font-size:12px;color:var(--muted)">'+diag.fault_chain_explanation+'</div></div>':'')
+    +(diag.predicted_impact?.length?'<div class="diag-row"><div class="diag-row-label">Predicted Impact</div><div class="diag-row-value">'+diag.predicted_impact.join(', ')+'</div></div>':'')
+    +fp
+    +(diag.prevention?'<div class="diag-row"><div class="diag-row-label">Prevention</div><div class="diag-row-value" style="font-size:12px;color:var(--muted)">'+diag.prevention+'</div></div>':'')
+    +(recs?'<div class="diag-row"><div class="diag-row-label">Recommendations</div><div class="recs">'+recs+'</div></div>':'')
+    +'</div>';
+}
+function toggleDiag(listId,idx){document.getElementById(`diag-${listId}-${idx}`)?.classList.toggle('open');}
 
-  return '<div class="diag-panel ' + openClass + '" id="diag-'+uid+'">'
-    + '<div class="diag-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg> '+(isLLM ? 'Claude AI Diagnosis' : 'Heuristic Diagnosis')+'</div>'
-    + (diag.root_cause ? '<div class="diag-row"><div class="diag-row-label">Root Cause</div><div class="diag-row-value">'+diag.root_cause+'</div></div>' : '')
-    + (chain ? '<div class="diag-row"><div class="diag-row-label">Fault Chain</div><div class="fault-chain">'+chain+'</div></div>' : '')
-    + (diag.fault_chain_explanation ? '<div class="diag-row"><div class="diag-row-label">Explanation</div><div class="diag-row-value" style="font-size:12px;color:var(--muted)">'+diag.fault_chain_explanation+'</div></div>' : '')
-    + (diag.predicted_impact && diag.predicted_impact.length ? '<div class="diag-row"><div class="diag-row-label">Predicted Impact</div><div class="diag-row-value">'+diag.predicted_impact.join(', ')+'</div></div>' : '')
-    + fp
-    + (diag.prevention ? '<div class="diag-row"><div class="diag-row-label">Prevention</div><div class="diag-row-value" style="font-size:12px;color:var(--muted)">'+diag.prevention+'</div></div>' : '')
-    + (recs ? '<div class="diag-row"><div class="diag-row-label">Recommendations</div><div class="recs">'+recs+'</div></div>' : '')
-    + '</div>';
+function updateIncidentBadge(){
+  const grouped=groupIncidents(_incidents),crit=grouped.filter(g=>g.severity==='critical').length;
+  const badge=document.getElementById('navIncBadge'),cb=document.getElementById('incidentCountBadge');
+  if(crit>0){badge.textContent=crit;badge.style.display='';}else badge.style.display='none';
+  if(cb){cb.textContent=`${grouped.length} unique · ${_incidents.length} total`;cb.className=crit>0?'badge badge-red':'badge badge-gray';}
 }
 
-function toggleDiag(listId, idx) {
-  const el = document.getElementById(`diag-${listId}-${idx}`);
-  if (el) el.classList.toggle('open');
-}
-
-function updateIncidentBadge() {
-  const grouped = groupIncidents(_incidents);
-  const crit = grouped.filter(g => g.severity === 'critical').length;
-  const badge = document.getElementById('navIncBadge');
-  const countBadge = document.getElementById('incidentCountBadge');
-  if (crit > 0) { badge.textContent = crit; badge.style.display = ''; }
-  else badge.style.display = 'none';
-  if (countBadge) {
-    countBadge.textContent = `${grouped.length} unique · ${_incidents.length} total`;
-    countBadge.className = crit > 0 ? 'badge badge-red' : 'badge badge-gray';
-  }
-}
-
-// ── Run LLM Diagnosis ──────────────────────────────────────────────────────
-async function runDiagnosis(incidentId, listId, idx, event) {
+async function runDiagnosis(incidentId,listId,idx,event){
   event.stopPropagation();
-  const btn = document.getElementById(`diagBtn-${listId}-${idx}`);
-  if (!btn) return;
-
-  btn.textContent = '⏳ Analyzing...';
-  btn.disabled = true;
-  btn.classList.add('loading');
-
-  try {
-    const resp = await fetch(`/api/incidents/${incidentId}/diagnose`, { method: 'POST' });
-    if (!resp.ok) throw new Error('Engine error: ' + resp.status);
-
-    const inc = await fetchJSON('/api/incidents');
-    if (inc) _incidents = inc;
+  const btn=document.getElementById(`diagBtn-${listId}-${idx}`);if(!btn)return;
+  btn.textContent='⏳ Analyzing...';btn.disabled=true;btn.classList.add('loading');
+  try{
+    const resp=await fetch(`/api/incidents/${incidentId}/diagnose`,{method:'POST'});
+    if(!resp.ok)throw new Error('Engine error: '+resp.status);
+    const inc=await fetchJSON('/api/incidents');if(inc)_incidents=inc;
     renderAll();
-
-    setTimeout(() => {
-      const panel = document.getElementById(`diag-${listId}-${idx}`);
-      if (panel) panel.classList.add('open');
-      panel?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-    }, 150);
-
-  } catch (e) {
-    btn.textContent = '❌ Failed — retry';
-    btn.disabled = false;
-    btn.classList.remove('loading');
-    btn.style.color = 'var(--no)';
-    btn.style.borderColor = 'rgba(239,68,68,0.3)';
-    setTimeout(() => {
-      btn.textContent = '🧠 Run LLM Diagnosis';
-      btn.style.color = '';
-      btn.style.borderColor = '';
-    }, 4000);
+    setTimeout(()=>{const p=document.getElementById(`diag-${listId}-${idx}`);if(p){p.classList.add('open');p.scrollIntoView({behavior:'smooth',block:'nearest'});}},150);
+  }catch(e){
+    btn.textContent='❌ Failed — retry';btn.disabled=false;btn.classList.remove('loading');
+    btn.style.color='var(--no)';btn.style.borderColor='rgba(239,68,68,0.3)';
+    setTimeout(()=>{btn.textContent='🧠 Run LLM Diagnosis';btn.style.color='';btn.style.borderColor='';},4000);
   }
 }
 
-// ── Metrics charts with anomaly annotations ────────────────────────────────
-function renderMetrics() {
-  const grid = document.getElementById('metricsGrid');
-  if (!grid) return;
+function renderMetrics(){
+  const byService={};
+  for(const row of _metricsHistory){if(!byService[row.service_name])byService[row.service_name]=[];byService[row.service_name].push(row);}
+  for(const name of Object.keys(_services)){if(!byService[name])byService[name]=[];}
 
-  const byService = {};
-  for (const row of _metricsHistory) {
-    if (!byService[row.service_name]) byService[row.service_name] = [];
-    byService[row.service_name].push(row);
-  }
-  for (const name of Object.keys(_services)) {
-    if (!byService[name]) byService[name] = [];
-  }
+  const allMs=Object.values(byService).flat().filter(r=>r.response_time!=null).map(r=>Math.round(parseFloat(r.response_time)*1000));
+  const allSt=Object.values(byService).flat();
+  const errCount=allSt.filter(r=>statusClass(r.status)==='down').length;
+  const errPct=allSt.length?((errCount/allSt.length)*100).toFixed(1):'0.0';
+  const p95=allMs.length?Math.round(p95arr(allMs)):0;
+  const avgMs=allMs.length?Math.round(avgArr(allMs)):0;
+  const healthyNow=Object.values(_services).filter(s=>statusClass(s.status)==='healthy').length;
+  const totalSvc=Object.keys(_services).length;
 
-  if (!Object.keys(byService).length) {
-    grid.innerHTML = '<div class="empty">No metric data yet — collector running…</div>'; return;
-  }
+  document.getElementById('gs-p95').textContent=p95?p95+'ms':'—';
+  document.getElementById('gs-avg-sub').textContent=avgMs?`avg ${avgMs}ms across services`:'—';
+  document.getElementById('gs-err').textContent=errPct+'%';
+  document.getElementById('gs-err-sub').textContent=`${errCount} failed of ${allSt.length} checks`;
+  document.getElementById('gs-healthy').textContent=`${healthyNow}/${totalSvc}`;
+  document.getElementById('gs-healthy-sub').textContent=healthyNow===totalSvc?'all services up':`${totalSvc-healthyNow} degraded`;
 
-  grid.innerHTML = Object.keys(byService).map(name => {
-    const sc = statusClass(_services[name]?.status);
-    const dotColor = sc === 'healthy' ? 'var(--yes)' : sc === 'down' ? 'var(--no)' : 'var(--warn)';
-    const uid = name.replace(/[^a-z0-9]/gi, '_');
-    return `<div class="chart-card">
-      <div class="chart-card-header">
-        <div class="chart-card-name">
-          <div style="width:8px;height:8px;border-radius:50%;background:${dotColor};flex-shrink:0"></div>
-          ${name}
-        </div>
-        <span class="chart-card-cur" id="curMs-${uid}">—</span>
+  const grid=document.getElementById('metricsGrid');
+  if(!grid)return;
+  if(!Object.keys(byService).length){grid.innerHTML='<div class="empty">No metric data yet</div>';return;}
+
+  grid.innerHTML=Object.keys(byService).map(name=>{
+    const sc=statusClass(_services[name]?.status);
+    const dotColor=sc==='healthy'?'#22c55e':sc==='down'?'#ef4444':'#eab308';
+    const uid=name.replace(/[^a-z0-9]/gi,'_');
+    return`<div class="mcrd">
+      <div class="mcrd-hdr">
+        <div class="mcrd-name"><div style="width:7px;height:7px;border-radius:50%;background:${dotColor}"></div>${name}</div>
+        <span class="mcrd-cur" id="mcur-${uid}">—</span>
       </div>
-      <div class="chart-wrap"><canvas id="chart-${uid}"></canvas></div>
+      <div class="mcrd-stats">
+        <div class="mstat"><div class="mstat-l">P50 avg</div><div class="mstat-v" id="mp50-${uid}">—</div></div>
+        <div class="mstat"><div class="mstat-l">P95</div><div class="mstat-v" style="color:#818cf8" id="mp95-${uid}">—</div></div>
+        <div class="mstat"><div class="mstat-l">Max</div><div class="mstat-v" id="mmax-${uid}">—</div></div>
+      </div>
+      <div class="mcrd-wrap"><canvas id="mc-${uid}" role="img" aria-label="${name} response time">${name} latency.</canvas></div>
+      <div class="mcrd-inc" id="minc-${uid}"></div>
     </div>`;
   }).join('');
 
-  Chart.defaults.color = '#71717a';
-  for (const [name, rows] of Object.entries(byService)) {
-    const uid = name.replace(/[^a-z0-9]/gi, '_');
-    const canvas = document.getElementById('chart-' + uid);
-    if (!canvas) continue;
-    if (_charts[uid]) { _charts[uid].destroy(); delete _charts[uid]; }
+  Chart.defaults.color='#71717a';
+  for(const[name,rows]of Object.entries(byService)){
+    const uid=name.replace(/[^a-z0-9]/gi,'_');
+    const canvas=document.getElementById('mc-'+uid);if(!canvas)continue;
+    if(_charts[uid]){_charts[uid].destroy();delete _charts[uid];}
 
-    const sorted = [...rows].sort((a,b) => (a.collected_at||'').localeCompare(b.collected_at||''));
-    const labels = sorted.map(r => {
-      const d = new Date(r.collected_at);
-      return d.toLocaleTimeString('en-US', {hour:'2-digit',minute:'2-digit',second:'2-digit'});
-    });
-    const data = sorted.map(r => r.response_time != null ? Math.round(parseFloat(r.response_time) * 1000) : null);
-    const statuses = sorted.map(r => statusClass(r.status));
+    const sorted=[...rows].sort((a,b)=>(a.collected_at||'').localeCompare(b.collected_at||''));
+    const labels=sorted.map(r=>new Date(r.collected_at).toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit',second:'2-digit'}));
+    const data=sorted.map(r=>r.response_time!=null?Math.round(parseFloat(r.response_time)*1000):null);
+    const statuses=sorted.map(r=>statusClass(r.status));
+    const valid=data.filter(d=>d!=null);
+    const latest=valid.at(-1);
+    const p50=Math.round(avgArr(valid));
+    const p95v=Math.round(p95arr(valid));
+    const maxV=Math.round(Math.max(...valid,0));
 
-    const latest = data.filter(d => d != null).at(-1);
-    const curEl = document.getElementById('curMs-' + uid);
-    if (curEl && latest != null) {
-      curEl.textContent = latest + 'ms';
-      curEl.className = 'chart-card-cur ' + (latest < 100 ? 'fast' : latest > 500 ? 'dead' : 'slow');
-    }
+    const curEl=document.getElementById('mcur-'+uid);
+    if(curEl&&latest!=null){curEl.textContent=latest+'ms';curEl.style.color=latest<100?'#22c55e':latest>500?'#ef4444':'#eab308';}
+    const p50El=document.getElementById('mp50-'+uid);if(p50El)p50El.textContent=p50+'ms';
+    const p95El=document.getElementById('mp95-'+uid);if(p95El)p95El.textContent=p95v+'ms';
+    const maxEl=document.getElementById('mmax-'+uid);if(maxEl){maxEl.textContent=maxV+'ms';maxEl.style.color=maxV>500?'#ef4444':maxV>100?'#eab308':'#a1a1aa';}
 
-    if (data.every(d => d == null)) {
-      canvas.parentElement.innerHTML = `<div class="chart-no-data">No response time data for ${name}</div>`;
-      continue;
-    }
-
-    const ptColors = statuses.map(s => s === 'healthy' ? '#22c55e' : s === 'down' ? '#ef4444' : '#eab308');
-
-    // Anomaly annotations: find incidents for this service within chart time range
-    const chartStart = sorted.length > 0 ? new Date(sorted[0].collected_at).getTime() : 0;
-    const chartEnd = sorted.length > 0 ? new Date(sorted[sorted.length-1].collected_at).getTime() : 0;
-    const serviceIncidents = _incidents.filter(inc => {
-      if (inc.service_name !== name || !inc.created_at) return false;
-      const t = new Date(inc.created_at).getTime();
-      return t >= chartStart - 60000 && t <= chartEnd + 60000;
+    const chartStart=sorted.length?new Date(sorted[0].collected_at).getTime():0;
+    const chartEnd=sorted.length?new Date(sorted[sorted.length-1].collected_at).getTime():0;
+    const svcInc=_incidents.filter(inc=>{
+      if(inc.service_name!==name||!inc.created_at)return false;
+      const t=new Date(inc.created_at).getTime();
+      return t>=chartStart-60000&&t<=chartEnd+60000;
     });
 
-    // Build annotation plugin
-    const annotationPlugin = {
-      id: 'anomalyAnnotations',
-      afterDraw(chart) {
-        if (!serviceIncidents.length) return;
-        const ctx = chart.ctx;
-        const xAxis = chart.scales.x;
-        const yAxis = chart.scales.y;
-        if (!xAxis || !yAxis) return;
+    const incDiv=document.getElementById('minc-'+uid);
+    if(incDiv&&svcInc.length){
+      incDiv.innerHTML='<span style="font-size:9px;color:#52525b;text-transform:uppercase;letter-spacing:.4px">anomalies</span>'
+        +svcInc.slice(0,5).map(inc=>`<span class="inc-pill">${new Date(inc.created_at).toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'})}</span>`).join('');
+    }
 
-        // Deduplicate incidents by minute to avoid overlapping lines
-        const seen = new Set();
-        serviceIncidents.forEach(inc => {
-          const incTime = new Date(inc.created_at).getTime();
-
-          // Find closest data point index
-          let closest = -1, minDiff = Infinity;
-          sorted.forEach((row, i) => {
-            const t = new Date(row.collected_at).getTime();
-            const diff = Math.abs(t - incTime);
-            if (diff < minDiff) { minDiff = diff; closest = i; }
-          });
-
-          // Only draw if within 2 minutes of a data point
-          if (closest === -1 || minDiff > 120000) return;
-
-          // Deduplicate by index
-          if (seen.has(closest)) return;
+    const annPlugin={
+      id:'ann_'+uid,
+      afterDraw(chart){
+        if(!svcInc.length)return;
+        const ctx=chart.ctx,xAxis=chart.scales.x,yAxis=chart.scales.y;if(!xAxis||!yAxis)return;
+        const seen=new Set();
+        svcInc.forEach(inc=>{
+          const incTime=new Date(inc.created_at).getTime();
+          let closest=-1,minDiff=Infinity;
+          sorted.forEach((row,i)=>{const d=Math.abs(new Date(row.collected_at).getTime()-incTime);if(d<minDiff){minDiff=d;closest=i;}});
+          if(closest===-1||minDiff>120000||seen.has(closest))return;
           seen.add(closest);
-
-          const x = xAxis.getPixelForIndex(closest);
-          if (x < xAxis.left || x > xAxis.right) return;
-
+          const x=xAxis.getPixelForIndex(closest);
+          if(x<xAxis.left||x>xAxis.right)return;
           ctx.save();
-
-          // Draw vertical dashed red line
-          ctx.beginPath();
-          ctx.moveTo(x, yAxis.top);
-          ctx.lineTo(x, yAxis.bottom);
-          ctx.strokeStyle = 'rgba(239,68,68,0.6)';
-          ctx.lineWidth = 1.5;
-          ctx.setLineDash([3, 3]);
-          ctx.stroke();
-          ctx.setLineDash([]);
-
-          // Draw warning icon at top
-          ctx.fillStyle = 'rgba(239,68,68,0.9)';
-          ctx.font = 'bold 10px Inter';
-          ctx.textAlign = 'center';
-          ctx.textBaseline = 'top';
-          ctx.fillText('⚠', x, yAxis.top + 2);
-
-          ctx.restore();
+          ctx.beginPath();ctx.moveTo(x,yAxis.top);ctx.lineTo(x,yAxis.bottom);
+          ctx.strokeStyle='rgba(239,68,68,0.55)';ctx.lineWidth=1.5;ctx.setLineDash([3,3]);ctx.stroke();ctx.setLineDash([]);
+          ctx.fillStyle='rgba(239,68,68,0.85)';ctx.font='10px Inter';ctx.textAlign='center';ctx.textBaseline='top';
+          ctx.fillText('⚠',x,yAxis.top+2);ctx.restore();
         });
       }
     };
 
-    _charts[uid] = new Chart(canvas.getContext('2d'), {
-      type: 'line',
-      data: {
-        labels,
-        datasets: [{
-          label: 'ms', data,
-          borderColor: 'rgba(99,102,241,0.7)',
-          backgroundColor: 'rgba(99,102,241,0.06)',
-          borderWidth: 1.5,
-          pointBackgroundColor: ptColors,
-          pointBorderColor: ptColors,
-          pointRadius: 3, pointHoverRadius: 5,
-          tension: 0.3, fill: true, spanGaps: true,
-        }],
-      },
-      options: {
-        responsive: true, maintainAspectRatio: false,
-        animation: { duration: 300 },
-        plugins: {
-          legend: { display: false },
-          tooltip: {
-            backgroundColor: '#1c1c1f',
-            borderColor: '#27272a', borderWidth: 1,
-            titleColor: '#f4f4f5', bodyColor: '#a1a1aa',
-            callbacks: { label: item => `${item.raw ?? '—'} ms` },
-          },
-        },
-        scales: {
-          x: {
-            ticks: { font: { family: 'JetBrains Mono', size: 9 }, maxRotation: 0, maxTicksLimit: 5 },
-            grid: { color: 'rgba(255,255,255,0.04)' },
-            border: { color: '#27272a' },
-          },
-          y: {
-            beginAtZero: true,
-            ticks: { font: { family: 'JetBrains Mono', size: 9 }, callback: v => v + 'ms' },
-            grid: { color: 'rgba(255,255,255,0.04)' },
-            border: { color: '#27272a' },
-          },
+    const svcColor=sc==='down'?'#ef4444':sc==='unhealthy'?'#eab308':'#6366f1';
+    const ptColors=statuses.map(s=>s==='healthy'?'#22c55e':s==='down'?'#ef4444':'#eab308');
+
+    _charts[uid]=new Chart(canvas.getContext('2d'),{
+      type:'line',
+      data:{labels,datasets:[{label:'ms',data,borderColor:svcColor,backgroundColor:svcColor+'10',borderWidth:1.5,pointBackgroundColor:ptColors,pointBorderColor:ptColors,pointRadius:2,pointHoverRadius:4,tension:.35,fill:true,spanGaps:true}]},
+      options:{
+        responsive:true,maintainAspectRatio:false,animation:{duration:250},
+        plugins:{legend:{display:false},tooltip:{backgroundColor:'#1c1c1f',borderColor:'#27272a',borderWidth:1,titleColor:'#f4f4f5',bodyColor:'#a1a1aa',callbacks:{label:item=>item.raw!=null?item.raw+' ms':'down'}}},
+        scales:{
+          x:{ticks:{font:{family:'JetBrains Mono',size:9},maxRotation:0,maxTicksLimit:4},grid:{color:'rgba(255,255,255,0.03)'},border:{color:'#27272a'}},
+          y:{beginAtZero:true,ticks:{font:{family:'JetBrains Mono',size:9},callback:v=>v+'ms'},grid:{color:'rgba(255,255,255,0.03)'},border:{color:'#27272a'}},
         },
       },
-      plugins: [annotationPlugin],
+      plugins:[annPlugin],
     });
   }
+
+  renderHeatmap(byService);
+  renderErrorChart(byService);
+  renderSLA();
+  renderMTTR();
 }
 
-// ── Topology ───────────────────────────────────────────────────────────────
-function renderDepGraph() {
-  if (!_serviceMap?.services) return;
-  const canvas = document.getElementById('depCanvas');
-  if (!canvas) return;
-  const ctx = canvas.getContext('2d');
-  canvas.width = canvas.parentElement.clientWidth - 40;
-  canvas.height = 360;
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
+function renderHeatmap(byService){
+  const hmGrid=document.getElementById('hmGrid');if(!hmGrid)return;
+  hmGrid.innerHTML='';
+  const names=Object.keys(byService);if(!names.length)return;
+  const maxN=Math.max(...names.map(n=>byService[n].length),1);
+  hmGrid.style.cssText=`display:grid;grid-template-columns:88px repeat(${maxN},1fr);gap:2px`;
+  names.forEach(name=>{
+    const rows=[...byService[name]].sort((a,b)=>(a.collected_at||'').localeCompare(b.collected_at||''));
+    const lbl=document.createElement('div');
+    lbl.style.cssText='font-size:9px;color:#52525b;display:flex;align-items:center;overflow:hidden;white-space:nowrap;font-family:monospace;padding-right:6px;text-overflow:ellipsis';
+    lbl.textContent=name.replace('coinops-','');
+    hmGrid.appendChild(lbl);
+    const incTimes=_incidents.filter(i=>i.service_name===name&&i.created_at).map(i=>new Date(i.created_at).getTime());
+    rows.forEach(row=>{
+      const cell=document.createElement('div');cell.className='hm-cell';
+      const rt=row.response_time!=null?parseFloat(row.response_time)*1000:null;
+      const sc=statusClass(row.status);
+      const rowTime=new Date(row.collected_at).getTime();
+      const isInc=incTimes.some(t=>Math.abs(t-rowTime)<90000);
+      let bg;
+      if(isInc){bg='#312e81';cell.style.outline='1px solid #4338ca';}
+      else if(sc==='down')bg='#ef4444';
+      else if(sc==='unhealthy'||(rt&&rt>100))bg='#eab308';
+      else bg='#22c55e';
+      cell.style.background=bg;
+      cell.title=`${name.replace('coinops-','')} | ${new Date(row.collected_at).toLocaleTimeString()} | ${rt!=null?Math.round(rt)+'ms':'down'}${isInc?' ⚠ incident':''}`;
+      hmGrid.appendChild(cell);
+    });
+    for(let i=rows.length;i<maxN;i++){const pad=document.createElement('div');pad.className='hm-cell';pad.style.background='#18181b';hmGrid.appendChild(pad);}
+  });
+}
 
-  const services = Object.keys(_serviceMap.services);
-  if (!services.length) return;
+function renderErrorChart(byService){
+  const canvas=document.getElementById('errChart');if(!canvas)return;
+  if(_charts['_err']){_charts['_err'].destroy();delete _charts['_err'];}
+  const allRows=Object.values(byService).flat().sort((a,b)=>(a.collected_at||'').localeCompare(b.collected_at||''));
+  if(!allRows.length)return;
+  const buckets={};
+  allRows.forEach(row=>{
+    const t=row.collected_at?row.collected_at.substring(0,19):'x';
+    if(!buckets[t])buckets[t]={total:0,errors:0};
+    buckets[t].total++;
+    if(statusClass(row.status)==='down')buckets[t].errors++;
+  });
+  const times=Object.keys(buckets).sort().slice(-40);
+  const errData=times.map(t=>buckets[t]?Math.round((buckets[t].errors/buckets[t].total)*100):0);
+  const labels=times.map(t=>new Date(t).toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'}));
+  _charts['_err']=new Chart(canvas.getContext('2d'),{
+    type:'bar',
+    data:{labels,datasets:[{label:'Error %',data:errData,backgroundColor:errData.map(v=>v>0?'rgba(239,68,68,0.5)':'rgba(34,197,94,0.15)'),borderColor:errData.map(v=>v>0?'#ef4444':'#22c55e'),borderWidth:1,borderRadius:2}]},
+    options:{
+      responsive:true,maintainAspectRatio:false,animation:{duration:200},
+      plugins:{legend:{display:false},tooltip:{backgroundColor:'#1c1c1f',borderColor:'#27272a',borderWidth:1,callbacks:{title:()=>'',label:i=>i.raw+'% error rate'}}},
+      scales:{x:{display:false},y:{display:true,position:'right',min:0,max:100,ticks:{font:{family:'JetBrains Mono',size:8},color:'#3f3f46',maxTicksLimit:3,callback:v=>v+'%'},grid:{color:'rgba(255,255,255,0.03)'},border:{display:false}}}
+    }
+  });
+}
 
-  const STATUS_COLORS = {
-    healthy:'#22c55e', down:'#ef4444', error:'#ef4444', timeout:'#ef4444',
-    unhealthy:'#eab308', warning:'#eab308', unknown:'#71717a',
-  };
-  const getColor = name => {
-    const s = (_services[name] && _services[name].status) || 'unknown';
-    return STATUS_COLORS[s] || '#71717a';
-  };
+function renderSLA(){
+  const wrap=document.getElementById('slaGrid');if(!wrap)return;wrap.innerHTML='';
+  const names=Object.keys(_services).length?Object.keys(_services):Object.keys(_uptimeData);
+  if(!names.length){wrap.innerHTML='<div class="empty" style="grid-column:1/-1">No SLA data</div>';return;}
+  names.forEach(name=>{
+    const u=_uptimeData[name];
+    const pct=u?.uptime_pct!=null?parseFloat(u.uptime_pct):null;
+    const pctStr=pct!=null?pct.toFixed(1)+'%':'—';
+    const color=pct==null?'#71717a':pct>=99?'#22c55e':pct>=95?'#6366f1':pct>=50?'#eab308':'#ef4444';
+    const met=pct!=null&&pct>=99;
+    const card=document.createElement('div');card.className='sla-card';
+    card.innerHTML=`
+      <div class="sla-name">${name.replace('coinops-','')}</div>
+      <div class="sla-bar-bg"><div class="sla-bar-fg" style="width:${pct||0}%;background:${color}"></div></div>
+      <div class="sla-pct" style="color:${color}">${pctStr}</div>
+      <div style="font-size:9px;font-weight:600;margin-top:3px;color:${met?'#22c55e':'#ef4444'}">${pct==null?'No data':met?'SLA met':'SLA missed'}</div>
+      <div style="font-size:9px;color:#3f3f46;margin-top:2px">target: 99%</div>
+    `;
+    wrap.appendChild(card);
+  });
+}
 
-  const deps = _serviceMap.services;
-  const depth = {};
-  function calcDepth(name, visited = new Set()) {
-    if (depth[name] !== undefined) return depth[name];
-    if (visited.has(name)) { depth[name] = 0; return 0; }
+function renderMTTR(){
+  const wrap=document.getElementById('mttrGrid');if(!wrap)return;wrap.innerHTML='';
+  const names=Object.keys(_services);if(!names.length)return;
+  names.forEach(name=>{
+    const svcInc=_incidents.filter(i=>i.service_name===name&&i.resolved_at&&i.created_at);
+    let m=null;
+    if(svcInc.length){const times=svcInc.map(i=>(new Date(i.resolved_at)-new Date(i.created_at))/60000);m=Math.round(times.reduce((a,b)=>a+b,0)/times.length);}
+    const color=m==null?'#52525b':m<5?'#22c55e':m<30?'#eab308':'#ef4444';
+    const card=document.createElement('div');card.className='sla-card';
+    card.innerHTML=`
+      <div class="sla-name">${name.replace('coinops-','')}</div>
+      <div class="sla-pct" style="color:${color};font-size:16px">${m==null?'—':m+'min'}</div>
+      <div style="font-size:9px;color:#3f3f46;margin-top:3px">${m==null?'no incidents':'mean recovery time'}</div>
+    `;
+    wrap.appendChild(card);
+  });
+}
+
+function renderDepGraph(){
+  if(!_serviceMap?.services)return;
+  const canvas=document.getElementById('depCanvas');if(!canvas)return;
+  const ctx=canvas.getContext('2d');
+  canvas.width=canvas.parentElement.clientWidth-40;canvas.height=360;
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  const services=Object.keys(_serviceMap.services);if(!services.length)return;
+  const SC={healthy:'#22c55e',down:'#ef4444',error:'#ef4444',timeout:'#ef4444',unhealthy:'#eab308',warning:'#eab308',unknown:'#71717a'};
+  const getColor=name=>SC[(_services[name]?.status)||'unknown']||'#71717a';
+  const deps=_serviceMap.services,depth={};
+  function calcDepth(name,visited=new Set()){
+    if(depth[name]!==undefined)return depth[name];
+    if(visited.has(name)){depth[name]=0;return 0;}
     visited.add(name);
-    const d = deps[name]?.depends_on || [];
-    depth[name] = d.length === 0 ? 0 : Math.max(...d.map(n => calcDepth(n, new Set(visited)))) + 1;
+    const d=deps[name]?.depends_on||[];
+    depth[name]=d.length===0?0:Math.max(...d.map(n=>calcDepth(n,new Set(visited))))+1;
     return depth[name];
   }
-  services.forEach(s => calcDepth(s));
-
-  const layers = {};
-  for (const s of services) {
-    const d = depth[s] || 0;
-    if (!layers[d]) layers[d] = [];
-    layers[d].push(s);
-  }
-  const layerKeys = Object.keys(layers).map(Number).sort((a,b) => b - a);
-
-  const W = canvas.width, H = canvas.height;
-  const positions = {};
-  layerKeys.forEach((layer, li) => {
-    const nodes = layers[layer];
-    const y = 60 + li * (H - 120) / Math.max(layerKeys.length - 1, 1);
-    nodes.forEach((name, ni) => {
-      positions[name] = { x: (W / (nodes.length + 1)) * (ni + 1), y };
-    });
+  services.forEach(s=>calcDepth(s));
+  const layers={};
+  for(const s of services){const d=depth[s]||0;if(!layers[d])layers[d]=[];layers[d].push(s);}
+  const layerKeys=Object.keys(layers).map(Number).sort((a,b)=>b-a);
+  const W=canvas.width,H=canvas.height,positions={};
+  layerKeys.forEach((layer,li)=>{
+    const nodes=layers[layer],y=60+li*(H-120)/Math.max(layerKeys.length-1,1);
+    nodes.forEach((name,ni)=>{positions[name]={x:(W/(nodes.length+1))*(ni+1),y};});
   });
-
-  for (const [name, cfg] of Object.entries(deps)) {
-    for (const dep of (cfg.depends_on || [])) {
-      if (!positions[dep] || !positions[name]) continue;
-      const from = positions[dep], to = positions[name];
-      const fromDown = statusClass(_services[dep]?.status) === 'down';
-      const toDown = statusClass(_services[name]?.status) === 'down';
-      const edgeColor = (fromDown || toDown) ? 'rgba(239,68,68,0.5)' : 'rgba(99,102,241,0.25)';
-      const edgeColorEnd = (fromDown || toDown) ? 'rgba(239,68,68,0.2)' : 'rgba(99,102,241,0.08)';
-
-      ctx.setLineDash([4, 4]);
-      const grad = ctx.createLinearGradient(from.x, from.y, to.x, to.y);
-      grad.addColorStop(0, edgeColor);
-      grad.addColorStop(1, edgeColorEnd);
+  for(const[name,cfg]of Object.entries(deps)){
+    for(const dep of(cfg.depends_on||[])){
+      if(!positions[dep]||!positions[name])continue;
+      const from=positions[dep],to=positions[name];
+      const fd=statusClass(_services[dep]?.status)==='down',td=statusClass(_services[name]?.status)==='down';
+      const ec=(fd||td)?'rgba(239,68,68,0.5)':'rgba(99,102,241,0.25)',ee=(fd||td)?'rgba(239,68,68,0.2)':'rgba(99,102,241,0.08)';
+      ctx.setLineDash([4,4]);
+      const grad=ctx.createLinearGradient(from.x,from.y,to.x,to.y);grad.addColorStop(0,ec);grad.addColorStop(1,ee);
+      ctx.beginPath();ctx.moveTo(from.x,from.y);
+      const mx=(from.x+to.x)/2,my=(from.y+to.y)/2-15;ctx.quadraticCurveTo(mx,my,to.x,to.y);
+      ctx.strokeStyle=grad;ctx.lineWidth=(fd||td)?2:1.5;ctx.stroke();ctx.setLineDash([]);
+      const angle=Math.atan2(to.y-my,to.x-mx);
       ctx.beginPath();
-      ctx.moveTo(from.x, from.y);
-      const mx = (from.x + to.x) / 2, my = (from.y + to.y) / 2 - 15;
-      ctx.quadraticCurveTo(mx, my, to.x, to.y);
-      ctx.strokeStyle = grad;
-      ctx.lineWidth = (fromDown || toDown) ? 2 : 1.5;
-      ctx.stroke();
-      ctx.setLineDash([]);
-      const angle = Math.atan2(to.y - my, to.x - mx);
-      ctx.beginPath();
-      ctx.moveTo(to.x - 10 * Math.cos(angle - 0.35), to.y - 10 * Math.sin(angle - 0.35));
-      ctx.lineTo(to.x - 3, to.y - 3);
-      ctx.lineTo(to.x - 10 * Math.cos(angle + 0.35), to.y - 10 * Math.sin(angle + 0.35));
-      ctx.strokeStyle = (fromDown || toDown) ? 'rgba(239,68,68,0.6)' : 'rgba(99,102,241,0.4)';
-      ctx.lineWidth = 1.5;
-      ctx.stroke();
-      ctx.setLineDash([4, 4]);
+      ctx.moveTo(to.x-10*Math.cos(angle-.35),to.y-10*Math.sin(angle-.35));
+      ctx.lineTo(to.x-3,to.y-3);
+      ctx.lineTo(to.x-10*Math.cos(angle+.35),to.y-10*Math.sin(angle+.35));
+      ctx.strokeStyle=(fd||td)?'rgba(239,68,68,0.6)':'rgba(99,102,241,0.4)';ctx.lineWidth=1.5;ctx.stroke();
+      ctx.setLineDash([4,4]);
     }
   }
   ctx.setLineDash([]);
-
-  const R = 24;
-  for (const [name, pos] of Object.entries(positions)) {
-    const color = getColor(name);
-    const { x, y } = pos;
-    const glow = ctx.createRadialGradient(x, y, 0, x, y, R * 2);
-    glow.addColorStop(0, color + '28'); glow.addColorStop(1, 'transparent');
-    ctx.beginPath(); ctx.arc(x, y, R * 2, 0, Math.PI * 2);
-    ctx.fillStyle = glow; ctx.fill();
-    ctx.beginPath(); ctx.arc(x, y, R, 0, Math.PI * 2);
-    ctx.fillStyle = '#121215'; ctx.fill();
-    ctx.strokeStyle = color; ctx.lineWidth = 2; ctx.stroke();
-    ctx.beginPath(); ctx.arc(x, y, 5, 0, Math.PI * 2);
-    ctx.fillStyle = color; ctx.fill();
-    ctx.fillStyle = '#a1a1aa';
-    ctx.font = '500 11px Inter, system-ui';
-    ctx.textAlign = 'center'; ctx.textBaseline = 'top';
-    ctx.fillText(name, x, y + R + 6);
+  const R=24;
+  for(const[name,pos]of Object.entries(positions)){
+    const color=getColor(name),{x,y}=pos;
+    const glow=ctx.createRadialGradient(x,y,0,x,y,R*2);glow.addColorStop(0,color+'28');glow.addColorStop(1,'transparent');
+    ctx.beginPath();ctx.arc(x,y,R*2,0,Math.PI*2);ctx.fillStyle=glow;ctx.fill();
+    ctx.beginPath();ctx.arc(x,y,R,0,Math.PI*2);ctx.fillStyle='#121215';ctx.fill();
+    ctx.strokeStyle=color;ctx.lineWidth=2;ctx.stroke();
+    ctx.beginPath();ctx.arc(x,y,5,0,Math.PI*2);ctx.fillStyle=color;ctx.fill();
+    ctx.fillStyle='#a1a1aa';ctx.font='500 11px Inter,system-ui';ctx.textAlign='center';ctx.textBaseline='top';
+    ctx.fillText(name,x,y+R+6);
   }
-
   renderFaultChains();
 }
 
-function renderFaultChains() {
-  const grid = document.getElementById('faultChainsGrid');
-  if (!grid || !_serviceMap?.fault_chains) {
-    if (grid) grid.innerHTML = '<div class="empty" style="grid-column:1/-1">No fault chain data available</div>';
-    return;
-  }
-  grid.innerHTML = Object.entries(_serviceMap.fault_chains).map(([key, chain]) => `
+function renderFaultChains(){
+  const grid=document.getElementById('faultChainsGrid');
+  if(!grid||!_serviceMap?.fault_chains){if(grid)grid.innerHTML='<div class="empty" style="grid-column:1/-1">No fault chain data</div>';return;}
+  grid.innerHTML=Object.entries(_serviceMap.fault_chains).map(([key,chain])=>`
     <div class="fc-card">
-      <div class="fc-title">
-        <svg viewBox="0 0 24 24" fill="none" stroke="var(--no)" stroke-width="2" style="width:13px;height:13px"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>
-        <span class="fc-root-name">${chain.root || key}</span>
-      </div>
-      <div class="fc-desc">${chain.description || ''}</div>
+      <div class="fc-title"><svg viewBox="0 0 24 24" fill="none" stroke="var(--no)" stroke-width="2" style="width:13px;height:13px"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg><span class="fc-root-name">${chain.root||key}</span></div>
+      <div class="fc-desc">${chain.description||''}</div>
       <div class="fc-affected">${(chain.affected||[]).map(s=>`<span class="fc-chip">${s}</span>`).join('')}</div>
     </div>`).join('');
 }
 
-// ── Boot ───────────────────────────────────────────────────────────────────
 refreshAll();
-setInterval(refreshAll, 20000);
+setInterval(refreshAll,20000);
 </script>
 </body>
 </html>
