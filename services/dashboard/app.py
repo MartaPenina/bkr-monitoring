@@ -181,8 +181,8 @@ def api_metrics_uptime():
                 SELECT service_name,
                        COUNT(*) as total_polls,
                        SUM(CASE WHEN status = 'healthy' THEN 1 ELSE 0 END) as healthy_polls,
-                       ROUND(100.0 * SUM(CASE WHEN status = 'healthy' THEN 1 ELSE 0 END) / COUNT(*), 1) as uptime_pct,
-                       ROUND(AVG(CASE WHEN response_time IS NOT NULL THEN response_time * 1000 END), 0) as avg_response_ms
+                       ROUND((100.0 * SUM(CASE WHEN status = 'healthy' THEN 1 ELSE 0 END) / COUNT(*))::numeric, 1) as uptime_pct,
+                       ROUND(AVG(CASE WHEN response_time IS NOT NULL THEN response_time * 1000 END)::numeric, 0) as avg_response_ms
                 FROM service_metrics
                 WHERE collected_at >= NOW() - (%s * INTERVAL '1 hour')
                 GROUP BY service_name
