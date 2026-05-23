@@ -133,20 +133,29 @@ def api_metrics(service_name):
 @app.route("/api/metrics/history")
 def api_metrics_history():
     limit = min(request.args.get("limit", 40, type=int), 200)
+    since_hours = request.args.get("since_hours", None, type=float)
     if not DATABASE_URL:
         return jsonify([])
     try:
         conn = get_db()
         with conn.cursor() as cur:
-            cur.execute("""
-                SELECT service_name, status, response_time, http_status, collected_at
-                FROM (
-                    SELECT *, ROW_NUMBER() OVER (
-                        PARTITION BY service_name ORDER BY collected_at DESC
-                    ) AS rn FROM service_metrics
-                ) sub WHERE rn <= %s
-                ORDER BY service_name, collected_at ASC
-            """, (limit,))
+            if since_hours:
+                cur.execute("""
+                    SELECT service_name, status, response_time, http_status, collected_at
+                    FROM service_metrics
+                    WHERE collected_at >= NOW() - INTERVAL '%s hours'
+                    ORDER BY service_name, collected_at ASC
+                """, (since_hours,))
+            else:
+                cur.execute("""
+                    SELECT service_name, status, response_time, http_status, collected_at
+                    FROM (
+                        SELECT *, ROW_NUMBER() OVER (
+                            PARTITION BY service_name ORDER BY collected_at DESC
+                        ) AS rn FROM service_metrics
+                    ) sub WHERE rn <= %s
+                    ORDER BY service_name, collected_at ASC
+                """, (limit,))
             rows = cur.fetchall()
         conn.close()
         return jsonify(serialize_rows(rows))
@@ -163,6 +172,27 @@ def api_engine_health():
     except Exception as e:
         return jsonify({"error": str(e), "status": "unavailable"}), 502
 
+@app.route("/api/metrics/uptime")
+def api_metrics_uptime():
+    hours = request.args.get("hours", 24, type=int)
+    try:
+        conn = get_db()
+        with conn.cursor() as cur:
+            cur.execute("""
+                SELECT service_name,
+                       COUNT(*) as total_polls,
+                       SUM(CASE WHEN status = 'healthy' THEN 1 ELSE 0 END) as healthy_polls,
+                       ROUND(100.0 * SUM(CASE WHEN status = 'healthy' THEN 1 ELSE 0 END) / COUNT(*), 1) as uptime_pct,
+                       ROUND(AVG(CASE WHEN response_time IS NOT NULL THEN response_time * 1000 END), 0) as avg_response_ms
+                FROM service_metrics
+                WHERE collected_at >= NOW() - INTERVAL '%s hours'
+                GROUP BY service_name
+            """, (hours,))
+            rows = cur.fetchall()
+        conn.close()
+        return jsonify(serialize_rows(rows))
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 if __name__ == "__main__":
     log_json("info", "Starting dashboard", port=PORT)
