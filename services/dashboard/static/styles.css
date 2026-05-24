@@ -159,6 +159,9 @@
     .fc-desc { font-size:11px; color:var(--muted); margin-bottom:10px; line-height:1.4; }
     .fc-affected { display:flex; gap:5px; flex-wrap:wrap; }
     .fc-chip { font-size:10px; font-family:var(--mono); background:rgba(255,255,255,0.05); border:1px solid var(--border); border-radius:5px; padding:2px 7px; color:var(--muted); }
+    .topo-dep-table td { border-bottom:1px solid rgba(255,255,255,0.04); }
+    .topo-dep-table tr:last-child td { border-bottom:none; }
+    .topo-dep-table tr:hover td { background:rgba(255,255,255,0.02); }
     .empty { text-align:center; padding:40px; color:var(--muted); font-size:13px; }
     .spin { animation:spin 1s linear infinite; }
     @keyframes spin { to { transform:rotate(360deg); } }

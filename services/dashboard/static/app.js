@@ -16,7 +16,7 @@ function switchTab(name,el){
   const[title,sub]=TABS[name]||['',''];
   document.getElementById('pageTitle').textContent=title;
   document.getElementById('pageSubtitle').textContent=sub;
-  if(name==='topology')renderDepGraph();
+  if(name==='topology'){renderDepGraph();renderTopoServiceSummary();renderTopoDepMatrix();renderTopoTimeline();renderTopoRisk();}
   if(name==='metrics')renderMetrics();
 }
 function switchTabByName(name){
@@ -94,7 +94,7 @@ function renderAll(){
   renderServiceGrid('serviceGridOverview',6);renderServiceGrid('serviceGridFull',null);
   renderIncidentList('incidentListOverview',5);renderIncidentList('incidentListFull',null);
   updateIncidentBadge();
-  if(_activePanel==='topology')renderDepGraph();
+  if(_activePanel==='topology'){renderDepGraph();renderTopoServiceSummary();renderTopoDepMatrix();renderTopoTimeline();renderTopoRisk();}
   if(_activePanel==='metrics')renderMetrics();
 }
 
@@ -452,6 +452,153 @@ function renderMTTR(){
       <div class="sla-name">${name.replace('coinops-','')}</div>
       <div class="sla-pct" style="color:${color};font-size:16px">${m==null?'—':m+'min'}</div>
       <div style="font-size:9px;color:#3f3f46;margin-top:3px">${m==null?'no incidents':'mean recovery time'}</div>
+    `;
+    wrap.appendChild(card);
+  });
+}
+
+function renderTopoServiceSummary(){
+  const wrap=document.getElementById('topoServiceSummary');if(!wrap)return;
+  const names=Object.keys(_services);if(!names.length){wrap.innerHTML='<div class="empty">No data</div>';return;}
+  wrap.innerHTML=names.map(name=>{
+    const s=_services[name];
+    const sc=statusClass(s.status);
+    const dotColor=sc==='healthy'?'#22c55e':sc==='down'?'#ef4444':'#eab308';
+    const u=_uptimeData[name];
+    const uptime=u?.uptime_pct!=null?parseFloat(u.uptime_pct).toFixed(1)+'%':'—';
+    const uptimeColor=u?.uptime_pct==null?'#71717a':u.uptime_pct>=99?'#22c55e':u.uptime_pct>=95?'#6366f1':u.uptime_pct>=50?'#eab308':'#ef4444';
+    const avgMs=u?.avg_response_ms!=null?Math.round(u.avg_response_ms)+'ms':'—';
+    const rt=s.last_response_time!=null?Math.round(parseFloat(s.last_response_time)*1000)+'ms':'—';
+    const fails=s.consecutive_failures||0;
+    const svcInc=_incidents.filter(i=>i.service_name===name).length;
+    return`<div style="background:rgba(255,255,255,0.025);border:1px solid rgba(255,255,255,0.07);border-left:2px solid ${dotColor};border-radius:10px;padding:10px 14px;display:grid;grid-template-columns:160px 1fr 80px 80px 80px 80px;align-items:center;gap:12px">
+      <div style="display:flex;align-items:center;gap:7px">
+        <div style="width:7px;height:7px;border-radius:50%;background:${dotColor};flex-shrink:0"></div>
+        <span style="font-size:12px;font-weight:600;color:#f4f4f5">${name.replace('coinops-','coinops-')}</span>
+      </div>
+      <div style="background:rgba(255,255,255,0.04);border-radius:4px;height:4px;overflow:hidden">
+        <div style="height:100%;width:${u?.uptime_pct||0}%;background:${uptimeColor};border-radius:4px"></div>
+      </div>
+      <div style="text-align:center"><div style="font-size:9px;color:#52525b;margin-bottom:2px">UPTIME</div><div style="font-size:11px;font-weight:600;font-family:monospace;color:${uptimeColor}">${uptime}</div></div>
+      <div style="text-align:center"><div style="font-size:9px;color:#52525b;margin-bottom:2px">NOW</div><div style="font-size:11px;font-weight:600;font-family:monospace;color:${dotColor}">${rt}</div></div>
+      <div style="text-align:center"><div style="font-size:9px;color:#52525b;margin-bottom:2px">AVG</div><div style="font-size:11px;font-weight:600;font-family:monospace;color:#a1a1aa">${avgMs}</div></div>
+      <div style="text-align:center"><div style="font-size:9px;color:#52525b;margin-bottom:2px">INCIDENTS</div><div style="font-size:11px;font-weight:600;font-family:monospace;color:${svcInc>0?'#ef4444':'#52525b'}">${svcInc}</div></div>
+    </div>`;
+  }).join('');
+}
+
+function renderTopoDepMatrix(){
+  const wrap=document.getElementById('topoDepMatrix');if(!wrap)return;
+  if(!_serviceMap?.services){wrap.innerHTML='<div class="empty">No service map</div>';return;}
+  const names=Object.keys(_serviceMap.services);
+  const shortName=n=>n.replace('coinops-','');
+  const deps=_serviceMap.services;
+  const statusC=n=>{const s=_services[n]?.status;return statusClass(s);};
+  const statusDot=n=>{const sc=statusC(n);return sc==='healthy'?'#22c55e':sc==='down'?'#ef4444':sc==='unhealthy'?'#eab308':'#71717a';};
+
+  let html=`<table style="border-collapse:collapse;font-size:11px;font-family:monospace;min-width:100%">`;
+  html+=`<tr><td style="padding:6px 10px;color:#52525b;font-size:10px">depends on →</td>`;
+  names.forEach(col=>{
+    html+=`<td style="padding:6px 8px;text-align:center;color:#71717a;white-space:nowrap">
+      <div style="width:8px;height:8px;border-radius:50%;background:${statusDot(col)};margin:0 auto 3px"></div>
+      ${shortName(col)}
+    </td>`;
+  });
+  html+=`</tr>`;
+
+  names.forEach(row=>{
+    html+=`<tr>`;
+    html+=`<td style="padding:6px 10px;color:#a1a1aa;white-space:nowrap;border-right:1px solid rgba(255,255,255,0.05)">
+      <div style="display:flex;align-items:center;gap:5px">
+        <div style="width:6px;height:6px;border-radius:50%;background:${statusDot(row)}"></div>
+        ${shortName(row)}
+      </div>
+    </td>`;
+    names.forEach(col=>{
+      const hasDep=(deps[row]?.depends_on||[]).includes(col);
+      const isSelf=row===col;
+      if(isSelf){
+        html+=`<td style="padding:6px 8px;text-align:center;background:rgba(255,255,255,0.03)"><span style="color:#27272a">—</span></td>`;
+      } else if(hasDep){
+        const rowDown=statusC(row)==='down', colDown=statusC(col)==='down';
+        const color=colDown?'#ef4444':rowDown?'#eab308':'#6366f1';
+        html+=`<td style="padding:6px 8px;text-align:center"><span style="font-size:16px;color:${color}">●</span></td>`;
+      } else {
+        html+=`<td style="padding:6px 8px;text-align:center"><span style="color:#27272a;font-size:10px">·</span></td>`;
+      }
+    });
+    html+=`</tr>`;
+  });
+  html+=`</table>`;
+  wrap.innerHTML=`<div style="background:rgba(255,255,255,0.025);border:1px solid rgba(255,255,255,0.07);border-radius:12px;overflow:hidden">${html}</div>`;
+}
+
+function renderTopoTimeline(){
+  const wrap=document.getElementById('topoTimeline');if(!wrap)return;
+  const names=Object.keys(_services);if(!names.length){wrap.innerHTML='<div class="empty">No data</div>';return;}
+  const now=Date.now();
+  const window24h=24*60*60*1000;
+  const toX=(ts)=>Math.max(0,Math.min(100,((now-new Date(ts).getTime())/window24h)*100));
+
+  let html='';
+  names.forEach(name=>{
+    const svcInc=_incidents.filter(i=>i.service_name===name&&i.created_at);
+    const sc=statusClass(_services[name]?.status);
+    const dotColor=sc==='healthy'?'#22c55e':sc==='down'?'#ef4444':'#eab308';
+    const markers=svcInc.map(inc=>{
+      const x=100-toX(inc.created_at);
+      const color=inc.severity==='critical'?'#ef4444':'#eab308';
+      const resolved=inc.resolved_at;
+      const endX=resolved?100-toX(inc.resolved_at):100;
+      const width=Math.max(0.5,endX-x);
+      return`<div title="${inc.severity}: ${new Date(inc.created_at).toLocaleTimeString()}" style="position:absolute;left:${x}%;width:${width}%;top:0;bottom:0;background:${color};opacity:0.4;border-radius:1px"></div>
+             <div style="position:absolute;left:${x}%;top:50%;transform:translate(-50%,-50%);width:8px;height:8px;background:${color};border-radius:50%;border:1px solid rgba(0,0,0,0.3)" title="${inc.severity}"></div>`;
+    }).join('');
+
+    html+=`<div style="display:grid;grid-template-columns:100px 1fr;align-items:center;gap:10px;margin-bottom:8px">
+      <div style="display:flex;align-items:center;gap:6px">
+        <div style="width:6px;height:6px;border-radius:50%;background:${dotColor};flex-shrink:0"></div>
+        <span style="font-size:10px;color:#71717a;font-family:monospace">${name.replace('coinops-','')}</span>
+      </div>
+      <div style="position:relative;height:20px;background:rgba(34,197,94,0.08);border-radius:3px;border:1px solid rgba(255,255,255,0.05)">
+        ${markers}
+        <div style="position:absolute;right:4px;top:50%;transform:translateY(-50%);font-size:9px;color:#3f3f46;pointer-events:none">now</div>
+        <div style="position:absolute;left:4px;top:50%;transform:translateY(-50%);font-size:9px;color:#3f3f46;pointer-events:none">-24h</div>
+      </div>
+    </div>`;
+  });
+
+  wrap.innerHTML=`<div style="background:rgba(255,255,255,0.025);border:1px solid rgba(255,255,255,0.07);border-radius:12px;padding:14px 16px">${html}
+    <div style="display:flex;gap:14px;margin-top:6px;padding-top:8px;border-top:1px solid rgba(255,255,255,0.05)">
+      <div style="display:flex;align-items:center;gap:5px;font-size:10px;color:#71717a"><div style="width:8px;height:8px;border-radius:50%;background:#ef4444"></div>Critical incident</div>
+      <div style="display:flex;align-items:center;gap:5px;font-size:10px;color:#71717a"><div style="width:8px;height:8px;border-radius:50%;background:#eab308"></div>Warning incident</div>
+    </div>
+  </div>`;
+}
+
+function renderTopoRisk(){
+  const wrap=document.getElementById('topoRisk');if(!wrap)return;
+  if(!_serviceMap?.services){wrap.innerHTML='';return;}
+  const names=Object.keys(_serviceMap.services);
+  const deps=_serviceMap.services;
+
+  names.forEach(name=>{
+    const affectedBy=names.filter(n=>(deps[n]?.depends_on||[]).includes(name));
+    const dependsOn=(deps[name]?.depends_on||[]);
+    const sc=statusClass(_services[name]?.status);
+    const dotColor=sc==='healthy'?'#22c55e':sc==='down'?'#ef4444':'#eab308';
+    const risk=affectedBy.length>=3?'high':affectedBy.length>=1?'medium':'low';
+    const riskColor=risk==='high'?'#ef4444':risk==='medium'?'#eab308':'#22c55e';
+    const card=document.createElement('div');
+    card.className='sla-card';
+    card.innerHTML=`
+      <div style="display:flex;align-items:center;gap:5px;margin-bottom:6px">
+        <div style="width:6px;height:6px;border-radius:50%;background:${dotColor}"></div>
+        <div class="sla-name" style="margin-bottom:0">${name.replace('coinops-','')}</div>
+      </div>
+      <div style="font-size:18px;font-weight:700;font-family:monospace;color:${riskColor};line-height:1">${affectedBy.length} affected</div>
+      <div style="font-size:9px;font-weight:600;color:${riskColor};margin-top:3px;text-transform:uppercase">${risk} blast radius</div>
+      ${affectedBy.length?`<div style="font-size:9px;color:#3f3f46;margin-top:4px">${affectedBy.map(n=>n.replace('coinops-','')).join(', ')}</div>`:'<div style="font-size:9px;color:#3f3f46;margin-top:4px">no downstream impact</div>'}
     `;
     wrap.appendChild(card);
   });
