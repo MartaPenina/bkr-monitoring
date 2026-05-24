@@ -1,0 +1,51 @@
+<div class="panel" id="panel-topology">
+  <div class="section">
+
+    <!-- Dependency Graph -->
+    <div class="section-header">
+      <div class="section-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>Service Dependency Graph</div>
+    </div>
+    <div class="dep-graph-wrap">
+      <canvas id="depCanvas"></canvas>
+      <div class="topo-legend">
+        <div class="legend-item"><div class="legend-dot" style="background:var(--yes)"></div>Healthy</div>
+        <div class="legend-item"><div class="legend-dot" style="background:var(--warn)"></div>Warning</div>
+        <div class="legend-item"><div class="legend-dot" style="background:var(--no)"></div>Down</div>
+        <div class="legend-item"><div class="legend-dot" style="background:var(--muted)"></div>Unknown</div>
+        <span style="margin-left:auto;font-size:11px;color:var(--muted)">Arrow → depends on</span>
+      </div>
+    </div>
+
+    <!-- Service Health Summary -->
+    <div class="section-header" style="margin-top:20px">
+      <div class="section-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>Service health summary</div>
+    </div>
+    <div id="topoServiceSummary" style="display:flex;flex-direction:column;gap:6px;margin-bottom:20px"></div>
+
+    <!-- Dependency Matrix -->
+    <div class="section-header">
+      <div class="section-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>Dependency matrix</div>
+      <span style="font-size:11px;color:var(--muted)">● = A depends on B</span>
+    </div>
+    <div id="topoDepMatrix" style="margin-bottom:20px;overflow-x:auto"></div>
+
+    <!-- Incident Timeline -->
+    <div class="section-header">
+      <div class="section-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>Incident timeline — last 24h</div>
+    </div>
+    <div id="topoTimeline" style="margin-bottom:20px"></div>
+
+    <!-- Blast Radius -->
+    <div class="section-header">
+      <div class="section-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>Blast radius — impact if service fails</div>
+    </div>
+    <div id="topoRisk" style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:20px"></div>
+
+    <!-- Fault Propagation Chains -->
+    <div class="section-header">
+      <div class="section-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>Fault propagation chains</div>
+    </div>
+    <div class="fault-chains-grid" id="faultChainsGrid"></div>
+
+  </div>
+</div>
