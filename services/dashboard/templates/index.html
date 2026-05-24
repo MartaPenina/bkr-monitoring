@@ -660,6 +660,7 @@ function renderMetrics(){
 
   Chart.defaults.color='#71717a';
   for(const[name,rows]of Object.entries(byService)){
+    const sc=statusClass(_services[name]?.status);
     const uid=name.replace(/[^a-z0-9]/gi,'_');
     const canvas=document.getElementById('mc-'+uid);if(!canvas)continue;
     if(_charts[uid]){_charts[uid].destroy();delete _charts[uid];}
