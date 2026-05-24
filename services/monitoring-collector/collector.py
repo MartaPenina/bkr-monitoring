@@ -191,6 +191,20 @@ def update_incident_diagnosis(incident_id, diagnosis):
     except Exception as e:
         log_json("error", "Failed to update incident diagnosis", error=str(e))
 
+def resolve_incident(service_name):
+    try:
+        conn = get_db()
+        with conn.cursor() as cur:
+            cur.execute(
+                """UPDATE incidents SET resolved_at = %s
+                   WHERE service_name = %s AND resolved_at IS NULL""",
+                (datetime.now(timezone.utc), service_name),
+            )
+        conn.commit()
+        conn.close()
+        log_json("info", "Incident resolved", service=service_name)
+    except Exception as e:
+        log_json("error", "Failed to resolve incident", service=service_name, error=str(e))
 
 # ── Health checking ─────────────────────────────────────────────────────────
 def check_service_health(service_name: str, service_config: dict) -> dict:
@@ -254,6 +268,7 @@ def detect_anomaly(service_name: str, result: dict) -> dict | None:
 
             if was_down:
                 log_json("info", "Service recovered", service=service_name)
+                resolve_incident(service_name)
 
         state["last_response_time"] = result.get("response_time")
         state["last_check"] = datetime.now(timezone.utc).isoformat()
