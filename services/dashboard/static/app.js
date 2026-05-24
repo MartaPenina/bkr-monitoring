@@ -5,6 +5,8 @@ const TABS={
   metrics:  ['Metrics','Latency · error rate · SLA · heatmap · MTTR'],
   incidents:['Incident Log','Detected anomalies with LLM root cause analysis'],
   topology: ['Service Topology','Dependency graph and fault propagation chains'],
+  llm:      ['LLM Diagnostics','Claude AI root cause analysis and recommendations'],
+  report:   ['System Health Report','Automated reliability report with key findings'],
 };
 
 function switchTab(name,el){
@@ -17,10 +19,14 @@ function switchTab(name,el){
   document.getElementById('pageTitle').textContent=title;
   document.getElementById('pageSubtitle').textContent=sub;
   if(name==='topology'){renderDepGraph();renderTopoServiceSummary();renderTopoDepMatrix();renderTopoTimeline();renderTopoRisk();}
+  if(name==='services')renderServicesPage();
+  if(name==='incidents')renderIncidentsPage();
+  if(name==='llm')renderLLMPage();
+  if(name==='report')renderReportPage();
   if(name==='metrics')renderMetrics();
 }
 function switchTabByName(name){
-  const order=['overview','services','metrics','incidents','topology'];
+  const order=['overview','services','metrics','incidents','topology','llm','report'];
   document.querySelectorAll('.nav-item').forEach((btn,i)=>{if(order[i]===name)switchTab(name,btn);});
 }
 async function setTimeRange(range,btn){
@@ -91,8 +97,10 @@ function groupIncidents(incidents){
 
 function renderAll(){
   renderStats();
-  renderServiceGrid('serviceGridOverview',6);renderServiceGrid('serviceGridFull',null);
-  renderIncidentList('incidentListOverview',5);renderIncidentList('incidentListFull',null);
+  renderServiceGrid('serviceGridOverview',6);
+  if(_activePanel==='services')renderServicesPage();
+  renderIncidentList('incidentListOverview',5);
+  if(_activePanel==='incidents')renderIncidentsPage();
   updateIncidentBadge();
   if(_activePanel==='topology'){renderDepGraph();renderTopoServiceSummary();renderTopoDepMatrix();renderTopoTimeline();renderTopoRisk();}
   if(_activePanel==='metrics')renderMetrics();
@@ -224,6 +232,435 @@ async function runDiagnosis(incidentId,listId,idx,event){
     btn.style.color='var(--no)';btn.style.borderColor='rgba(239,68,68,0.3)';
     setTimeout(()=>{btn.textContent='🧠 Run LLM Diagnosis';btn.style.color='';btn.style.borderColor='';},4000);
   }
+}
+
+
+let _svcFilter='all';
+let _incFilter='all';
+
+function filterServices(filter, btn){
+  _svcFilter=filter;
+  document.querySelectorAll('#svcFilterBtns button').forEach(b=>{
+    b.style.background='transparent';b.style.color='var(--muted)';b.style.borderColor='var(--border)';
+  });
+  btn.style.background='var(--accent)';btn.style.color='#fff';btn.style.borderColor='var(--accent)';
+  renderServicesPage();
+}
+
+function filterIncidents(filter, btn){
+  _incFilter=filter;
+  document.querySelectorAll('#incFilterBtns button').forEach(b=>{
+    b.style.background='transparent';b.style.color='var(--muted)';b.style.borderColor='var(--border)';
+  });
+  btn.style.background='var(--accent)';btn.style.color='#fff';btn.style.borderColor='var(--accent)';
+  renderIncidentsPage();
+}
+
+
+function renderLLMPage(){
+  // Update LLM status dot
+  const dot2=document.getElementById('llmDot2');
+  const txt2=document.getElementById('llmStatusText2');
+
+  const grouped=groupIncidents(_incidents);
+  const llmDiags=grouped.filter(g=>g.diagnosis?.diagnosis_source==='claude_api');
+  const heuristic=grouped.filter(g=>g.diagnosis&&g.diagnosis.diagnosis_source!=='claude_api');
+  const noDiag=grouped.filter(g=>!g.diagnosis);
+  const avgConf=llmDiags.length?Math.round(llmDiags.reduce((a,g)=>a+(g.diagnosis.confidence||0),0)/llmDiags.length*100):0;
+
+  // Summary cards
+  const cards=document.getElementById('llmSummaryCards');
+  if(cards){
+    const mk=(label,val,color,sub)=>`<div style="background:rgba(255,255,255,0.025);border:1px solid rgba(255,255,255,0.07);border-left:2px solid ${color};border-radius:0 10px 10px 0;padding:12px 14px">
+      <div style="font-size:9px;color:#52525b;text-transform:uppercase;letter-spacing:.6px;margin-bottom:5px">${label}</div>
+      <div style="font-size:22px;font-weight:700;font-family:monospace;color:${color};line-height:1">${val}</div>
+      ${sub?`<div style="font-size:10px;color:#52525b;margin-top:3px">${sub}</div>`:''}
+    </div>`;
+    cards.innerHTML=
+      mk('Claude AI analyses',llmDiags.length,'#818cf8',`of ${grouped.length} incidents`)+
+      mk('Avg confidence',avgConf+'%',avgConf>=70?'#22c55e':avgConf>=40?'#eab308':'#ef4444','diagnosis accuracy')+
+      mk('Heuristic only',heuristic.length,'#71717a','rule-based detection')+
+      mk('Awaiting diagnosis',noDiag.length,noDiag.length>0?'#f97316':'#22c55e','no analysis yet');
+  }
+
+  // Confidence bars
+  const confEl=document.getElementById('llmConfidence');
+  if(confEl){
+    if(!llmDiags.length){confEl.innerHTML='<div class="empty">No LLM diagnoses yet — enable LLM engine and run diagnosis</div>';return;}
+    const bins=[0,0,0,0,0]; // 0-20, 20-40, 40-60, 60-80, 80-100
+    llmDiags.forEach(g=>{const c=(g.diagnosis.confidence||0)*100;bins[Math.min(4,Math.floor(c/20))]++;});
+    const max=Math.max(...bins,1);
+    const labels=['0–20%','20–40%','40–60%','60–80%','80–100%'];
+    const colors=['#ef4444','#f97316','#eab308','#6366f1','#22c55e'];
+    confEl.innerHTML=`<div style="background:rgba(255,255,255,0.025);border:1px solid rgba(255,255,255,0.07);border-radius:12px;padding:16px">
+      <div style="display:flex;gap:6px;align-items:flex-end;height:80px">
+        ${bins.map((v,i)=>`<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px">
+          <div style="font-size:10px;color:#71717a">${v}</div>
+          <div style="width:100%;background:${colors[i]};opacity:0.8;border-radius:3px 3px 0 0;height:${Math.round(v/max*60)+4}px"></div>
+        </div>`).join('')}
+      </div>
+      <div style="display:flex;gap:6px;margin-top:6px">
+        ${labels.map((l,i)=>`<div style="flex:1;text-align:center;font-size:9px;color:#52525b">${l}</div>`).join('')}
+      </div>
+    </div>`;
+  }
+
+  // Diagnosis list
+  const listEl=document.getElementById('llmDiagList');
+  if(!listEl)return;
+  if(!llmDiags.length){listEl.innerHTML='<div class="empty">No Claude AI diagnoses yet.<br><br>Enable LLM engine: uncomment ANTHROPIC_API_KEY in ~/.env on GCP node-03, then restart diagnostic-engine.</div>';return;}
+  listEl.innerHTML=llmDiags.map((inc,idx)=>{
+    const diag=inc.diagnosis;
+    const conf=Math.round((diag.confidence||0)*100);
+    const confColor=conf>=70?'#22c55e':conf>=40?'#eab308':'#ef4444';
+    const time=fmtTime(inc.created_at);
+    const chain=(diag.fault_chain||[]).map((n,i)=>
+      (i===0?'<span class="chain-node root">'+n+'</span>':'<span class="chain-node">'+n+'</span>')+(i<(diag.fault_chain.length-1)?'<span class="chain-arrow">→</span>':'')).join('');
+    const recs=(diag.recommendations||[]).slice(0,3).map(r=>{
+      const pc=r.priority==='immediate'?'pri-immediate':r.priority==='short-term'?'pri-short-term':'pri-long-term';
+      return'<div class="rec-item"><div class="rec-header"><div class="rec-priority '+pc+'"></div><span class="rec-action">'+(r.action||'')+'</span></div>'+(r.command?'<div class="rec-cmd">'+r.command+'</div>':'')+'</div>';
+    }).join('');
+    return`<div class="incident critical" onclick="this.querySelector('.diag-panel').classList.toggle('open')" style="cursor:pointer">
+      <div class="inc-header">
+        <div class="inc-left">
+          <span class="inc-service">${inc.service_name}</span>
+          <span class="badge badge-accent">Claude AI</span>
+          <span class="badge badge-${inc.severity==='critical'?'red':'yellow'}">${inc.severity}</span>
+          <span style="font-size:11px;font-weight:700;font-family:monospace;color:${confColor}">${conf}% confidence</span>
+          ${inc.count>1?`<span class="inc-count">${inc.count}×</span>`:''}
+        </div>
+        <span class="inc-time">${time}</span>
+      </div>
+      <div class="inc-type" style="color:#a1a1aa;margin-bottom:6px">${diag.root_cause||'—'}</div>
+      <div class="diag-panel open" id="llm-diag-${idx}">
+        ${chain?`<div class="diag-row"><div class="diag-row-label">Fault Chain</div><div class="fault-chain">${chain}</div></div>`:''}
+        ${diag.fault_chain_explanation?`<div class="diag-row"><div class="diag-row-label">Explanation</div><div class="diag-row-value" style="font-size:12px;color:var(--muted)">${diag.fault_chain_explanation}</div></div>`:''}
+        ${diag.predicted_impact?.length?`<div class="diag-row"><div class="diag-row-label">Predicted Impact</div><div class="diag-row-value">${diag.predicted_impact.join(', ')}</div></div>`:''}
+        ${diag.prevention?`<div class="diag-row"><div class="diag-row-label">Prevention</div><div class="diag-row-value" style="font-size:12px;color:var(--muted)">${diag.prevention}</div></div>`:''}
+        ${recs?`<div class="diag-row"><div class="diag-row-label">Recommendations</div><div class="recs">${recs}</div></div>`:''}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function renderReportPage(){
+  const ts=document.getElementById('reportTimestamp');
+  if(ts)ts.textContent='Generated '+new Date().toLocaleString('en-US',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'});
+
+  const svcs=Object.values(_services);
+  const total=svcs.length||1;
+  const healthy=svcs.filter(s=>statusClass(s.status)==='healthy').length;
+  const score=Math.round((healthy/total)*100);
+  const scoreColor=score>=95?'#22c55e':score>=80?'#6366f1':score>=50?'#eab308':'#ef4444';
+  const scoreLabel=score>=95?'All systems operational':score>=80?'Minor degradation':score>=50?'Partial outage':'Critical failure';
+
+  // Overall
+  const overallEl=document.getElementById('reportOverall');
+  if(overallEl){
+    overallEl.innerHTML=`<div style="background:rgba(255,255,255,0.025);border:1px solid rgba(255,255,255,0.07);border-radius:12px;padding:20px;display:flex;align-items:center;gap:24px">
+      <div style="text-align:center;flex-shrink:0">
+        <div style="font-size:56px;font-weight:700;font-family:monospace;color:${scoreColor};line-height:1">${score}</div>
+        <div style="font-size:11px;color:${scoreColor};font-weight:600;margin-top:4px">Health Score</div>
+      </div>
+      <div style="flex:1;border-left:1px solid rgba(255,255,255,0.07);padding-left:24px">
+        <div style="font-size:16px;font-weight:600;color:#f4f4f5;margin-bottom:6px">${scoreLabel}</div>
+        <div style="font-size:12px;color:#71717a;margin-bottom:12px">${new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric'})}</div>
+        <div style="display:flex;gap:20px">
+          <div><div style="font-size:9px;color:#52525b;text-transform:uppercase;letter-spacing:.6px;margin-bottom:3px">Services</div><div style="font-size:18px;font-weight:700;font-family:monospace;color:#f4f4f5">${total}</div></div>
+          <div><div style="font-size:9px;color:#52525b;text-transform:uppercase;letter-spacing:.6px;margin-bottom:3px">Healthy</div><div style="font-size:18px;font-weight:700;font-family:monospace;color:#22c55e">${healthy}</div></div>
+          <div><div style="font-size:9px;color:#52525b;text-transform:uppercase;letter-spacing:.6px;margin-bottom:3px">Incidents</div><div style="font-size:18px;font-weight:700;font-family:monospace;color:#ef4444">${groupIncidents(_incidents).length}</div></div>
+          <div><div style="font-size:9px;color:#52525b;text-transform:uppercase;letter-spacing:.6px;margin-bottom:3px">LLM Diagnoses</div><div style="font-size:18px;font-weight:700;font-family:monospace;color:#818cf8">${groupIncidents(_incidents).filter(g=>g.diagnosis?.diagnosis_source==='claude_api').length}</div></div>
+        </div>
+      </div>
+    </div>`;
+  }
+
+  // Per-service
+  const svcEl=document.getElementById('reportServices');
+  if(svcEl){
+    const names=Object.keys(_services);
+    svcEl.innerHTML=`<div style="background:rgba(255,255,255,0.025);border:1px solid rgba(255,255,255,0.07);border-radius:12px;overflow:hidden">
+      <table style="width:100%;border-collapse:collapse;font-size:12px">
+        <thead><tr style="border-bottom:1px solid rgba(255,255,255,0.07)">
+          <th style="padding:10px 14px;text-align:left;font-size:10px;color:#52525b;font-weight:600;text-transform:uppercase;letter-spacing:.5px">Service</th>
+          <th style="padding:10px 14px;text-align:center;font-size:10px;color:#52525b;font-weight:600;text-transform:uppercase;letter-spacing:.5px">Status</th>
+          <th style="padding:10px 14px;text-align:center;font-size:10px;color:#52525b;font-weight:600;text-transform:uppercase;letter-spacing:.5px">Uptime 24h</th>
+          <th style="padding:10px 14px;text-align:center;font-size:10px;color:#52525b;font-weight:600;text-transform:uppercase;letter-spacing:.5px">Avg Response</th>
+          <th style="padding:10px 14px;text-align:center;font-size:10px;color:#52525b;font-weight:600;text-transform:uppercase;letter-spacing:.5px">Incidents</th>
+          <th style="padding:10px 14px;text-align:center;font-size:10px;color:#52525b;font-weight:600;text-transform:uppercase;letter-spacing:.5px">MTTR</th>
+          <th style="padding:10px 14px;text-align:left;font-size:10px;color:#52525b;font-weight:600;text-transform:uppercase;letter-spacing:.5px">Assessment</th>
+        </tr></thead>
+        <tbody>
+        ${names.map(name=>{
+          const s=_services[name];
+          const sc=statusClass(s.status);
+          const u=_uptimeData[name];
+          const pct=u?.uptime_pct!=null?parseFloat(u.uptime_pct):null;
+          const pctColor=pct==null?'#71717a':pct>=99?'#22c55e':pct>=95?'#6366f1':pct>=50?'#eab308':'#ef4444';
+          const dotColor=sc==='healthy'?'#22c55e':sc==='down'?'#ef4444':'#eab308';
+          const avgMs=u?.avg_response_ms!=null?Math.round(u.avg_response_ms)+'ms':'—';
+          const incCount=_incidents.filter(i=>i.service_name===name).length;
+          const resolved=_incidents.filter(i=>i.service_name===name&&i.resolved_at&&i.created_at);
+          const mttr=resolved.length?Math.round(resolved.map(i=>(new Date(i.resolved_at)-new Date(i.created_at))/60000).reduce((a,b)=>a+b,0)/resolved.length)+'min':'—';
+          const assessment=pct==null?'No data':pct>=99?'Excellent — SLA met':pct>=95?'Good — minor issues':pct>=80?'Degraded — needs attention':'Critical — SLA breach';
+          const assessColor=pct==null?'#52525b':pct>=99?'#22c55e':pct>=95?'#6366f1':pct>=80?'#eab308':'#ef4444';
+          return`<tr style="border-bottom:1px solid rgba(255,255,255,0.04)">
+            <td style="padding:10px 14px"><div style="display:flex;align-items:center;gap:6px"><div style="width:6px;height:6px;border-radius:50%;background:${dotColor}"></div><span style="font-family:monospace;font-weight:600">${name}</span></div></td>
+            <td style="padding:10px 14px;text-align:center"><span style="font-size:11px;font-weight:600;color:${dotColor}">${s.status||'unknown'}</span></td>
+            <td style="padding:10px 14px;text-align:center;font-family:monospace;font-weight:600;color:${pctColor}">${pct!=null?pct.toFixed(1)+'%':'—'}</td>
+            <td style="padding:10px 14px;text-align:center;font-family:monospace;color:#a1a1aa">${avgMs}</td>
+            <td style="padding:10px 14px;text-align:center;font-family:monospace;color:${incCount>0?'#ef4444':'#22c55e'}">${incCount}</td>
+            <td style="padding:10px 14px;text-align:center;font-family:monospace;color:#a1a1aa">${mttr}</td>
+            <td style="padding:10px 14px;font-size:11px;color:${assessColor}">${assessment}</td>
+          </tr>`;
+        }).join('')}
+        </tbody>
+      </table>
+    </div>`;
+  }
+
+  // Key findings
+  const findEl=document.getElementById('reportFindings');
+  if(findEl){
+    const findings=[];
+    const names=Object.keys(_services);
+    names.forEach(name=>{
+      const u=_uptimeData[name];
+      const pct=u?.uptime_pct!=null?parseFloat(u.uptime_pct):null;
+      const incCount=_incidents.filter(i=>i.service_name===name).length;
+      if(pct!=null&&pct<95) findings.push({type:'critical',text:`${name} uptime ${pct.toFixed(1)}% — below 95% SLA threshold`,icon:'⚠'});
+      if(incCount>10) findings.push({type:'warning',text:`${name} has ${incCount} incidents — investigate root cause`,icon:'📋'});
+    });
+    const grouped=groupIncidents(_incidents);
+    const noLLM=grouped.filter(g=>!g.diagnosis);
+    if(noLLM.length>0) findings.push({type:'info',text:`${noLLM.length} incidents without LLM diagnosis — enable Claude AI engine for deeper analysis`,icon:'🧠'});
+    const llmDiags=grouped.filter(g=>g.diagnosis?.diagnosis_source==='claude_api');
+    if(llmDiags.length>0){
+      const avg=Math.round(llmDiags.reduce((a,g)=>a+(g.diagnosis.confidence||0),0)/llmDiags.length*100);
+      findings.push({type:'success',text:`LLM engine achieved ${avg}% average confidence across ${llmDiags.length} diagnoses`,icon:'✅'});
+    }
+    if(!findings.length) findings.push({type:'success',text:'All systems operating within normal parameters',icon:'✅'});
+
+    findEl.innerHTML=`<div style="display:flex;flex-direction:column;gap:8px">
+      ${findings.map(f=>{
+        const color=f.type==='critical'?'#ef4444':f.type==='warning'?'#eab308':f.type==='info'?'#6366f1':'#22c55e';
+        return`<div style="background:rgba(255,255,255,0.025);border:1px solid rgba(255,255,255,0.07);border-left:2px solid ${color};border-radius:0 10px 10px 0;padding:10px 14px;display:flex;align-items:center;gap:10px">
+          <span style="font-size:14px">${f.icon}</span>
+          <span style="font-size:12px;color:#a1a1aa">${f.text}</span>
+        </div>`;
+      }).join('')}
+    </div>`;
+  }
+
+  // LLM effectiveness
+  const llmEl=document.getElementById('reportLLM');
+  if(llmEl){
+    const grouped=groupIncidents(_incidents);
+    const total=grouped.length||1;
+    const withLLM=grouped.filter(g=>g.diagnosis?.diagnosis_source==='claude_api').length;
+    const heuristic=grouped.filter(g=>g.diagnosis&&g.diagnosis.diagnosis_source!=='claude_api').length;
+    const none=grouped.filter(g=>!g.diagnosis).length;
+    const llmPct=Math.round(withLLM/total*100);
+    llmEl.innerHTML=`<div style="background:rgba(255,255,255,0.025);border:1px solid rgba(255,255,255,0.07);border-radius:12px;padding:16px 20px">
+      <div style="display:flex;gap:16px;margin-bottom:14px">
+        <div style="flex:1;text-align:center">
+          <div style="font-size:28px;font-weight:700;font-family:monospace;color:#818cf8">${withLLM}</div>
+          <div style="font-size:10px;color:#52525b;margin-top:2px">Claude AI diagnoses</div>
+        </div>
+        <div style="flex:1;text-align:center">
+          <div style="font-size:28px;font-weight:700;font-family:monospace;color:#71717a">${heuristic}</div>
+          <div style="font-size:10px;color:#52525b;margin-top:2px">Heuristic diagnoses</div>
+        </div>
+        <div style="flex:1;text-align:center">
+          <div style="font-size:28px;font-weight:700;font-family:monospace;color:#f97316">${none}</div>
+          <div style="font-size:10px;color:#52525b;margin-top:2px">Undiagnosed</div>
+        </div>
+      </div>
+      <div style="background:rgba(255,255,255,0.06);border-radius:4px;height:8px;overflow:hidden;display:flex">
+        <div style="height:100%;width:${llmPct}%;background:#818cf8"></div>
+        <div style="height:100%;width:${Math.round(heuristic/total*100)}%;background:#52525b"></div>
+        <div style="height:100%;flex:1;background:#27272a"></div>
+      </div>
+      <div style="display:flex;gap:14px;margin-top:8px">
+        <div style="display:flex;align-items:center;gap:4px;font-size:10px;color:#71717a"><div style="width:8px;height:8px;border-radius:1px;background:#818cf8"></div>Claude AI ${llmPct}%</div>
+        <div style="display:flex;align-items:center;gap:4px;font-size:10px;color:#71717a"><div style="width:8px;height:8px;border-radius:1px;background:#52525b"></div>Heuristic ${Math.round(heuristic/total*100)}%</div>
+        <div style="display:flex;align-items:center;gap:4px;font-size:10px;color:#71717a"><div style="width:8px;height:8px;border-radius:1px;background:#27272a;border:1px solid #3f3f46"></div>None ${Math.round(none/total*100)}%</div>
+      </div>
+    </div>`;
+  }
+}
+
+function renderServicesPage(){
+  // Filtered service grid
+  const el=document.getElementById('serviceGridFull');
+  if(!el)return;
+  let entries=Object.entries(_services);
+  if(_svcFilter==='down') entries=entries.filter(([,s])=>statusClass(s.status)==='down');
+  else if(_svcFilter==='warning') entries=entries.filter(([,s])=>statusClass(s.status)==='unhealthy');
+  if(!entries.length){el.innerHTML='<div class="empty">No services match filter</div>';}
+  else{
+    el.innerHTML=entries.map(([name,s])=>{
+      const sc=statusClass(s.status),rt=fmtMs(s.last_response_time),rtc=msClass(s.last_response_time);
+      const lc=s.last_check?new Date(s.last_check).toLocaleTimeString('en-US'):'—';
+      const fails=s.consecutive_failures||0;
+      const uptime=_uptimeData[name];
+      const uptimePct=uptime?.uptime_pct!=null?uptime.uptime_pct+'%':'—';
+      const uptimeClass=uptime?.uptime_pct==null?'':uptime.uptime_pct>=99?'green':uptime.uptime_pct>=95?'warn':'red';
+      const avgMs=uptime?.avg_response_ms!=null?Math.round(uptime.avg_response_ms)+'ms':'—';
+      return`<div class="service-card ${sc}">
+        <div class="svc-header"><div class="svc-name-row"><div class="svc-dot ${s.status||'unknown'}"></div><span class="svc-name">${name}</span></div>${statusBadge(s.status)}</div>
+        <div class="svc-metrics">
+          <div class="svc-metric"><div class="svc-metric-label">Response</div><div class="svc-metric-value ${rtc}">${rt}</div></div>
+          <div class="svc-metric"><div class="svc-metric-label">Last Check</div><div class="svc-metric-value">${lc}</div></div>
+          <div class="svc-metric"><div class="svc-metric-label">Uptime 24h</div><div class="svc-metric-value ${uptimeClass}">${uptimePct}</div></div>
+          <div class="svc-metric"><div class="svc-metric-label">Avg Response</div><div class="svc-metric-value">${avgMs}</div></div>
+        </div>
+        ${fails>0?`<div class="svc-failures"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:11px;height:11px"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>${fails} consecutive failures</div>`:''}
+      </div>`;
+    }).join('');
+  }
+
+  // Health score
+  const scoreEl=document.getElementById('svcHealthScore');
+  if(scoreEl){
+    const svcs=Object.values(_services);
+    const total=svcs.length||1;
+    const healthy=svcs.filter(s=>statusClass(s.status)==='healthy').length;
+    const warn=svcs.filter(s=>statusClass(s.status)==='unhealthy').length;
+    const down=svcs.filter(s=>statusClass(s.status)==='down').length;
+    const score=Math.round(((healthy*100+warn*50)/total));
+    const scoreColor=score>=95?'#22c55e':score>=80?'#6366f1':score>=50?'#eab308':'#ef4444';
+    const scoreLabel=score>=95?'Excellent':score>=80?'Good':score>=50?'Degraded':'Critical';
+    scoreEl.innerHTML=`<div style="background:rgba(255,255,255,0.025);border:1px solid rgba(255,255,255,0.07);border-radius:12px;padding:16px 20px">
+      <div style="display:flex;align-items:center;gap:20px">
+        <div style="text-align:center;flex-shrink:0">
+          <div style="font-size:42px;font-weight:700;font-family:monospace;color:${scoreColor};line-height:1">${score}</div>
+          <div style="font-size:11px;font-weight:600;color:${scoreColor};margin-top:2px">${scoreLabel}</div>
+        </div>
+        <div style="flex:1">
+          <div style="background:rgba(255,255,255,0.06);border-radius:6px;height:10px;overflow:hidden;margin-bottom:10px">
+            <div style="height:100%;width:${score}%;background:${scoreColor};border-radius:6px;transition:width .5s"></div>
+          </div>
+          <div style="display:flex;gap:16px">
+            <div style="display:flex;align-items:center;gap:5px;font-size:12px;color:#22c55e"><div style="width:8px;height:8px;border-radius:50%;background:#22c55e"></div>${healthy} healthy</div>
+            ${warn?`<div style="display:flex;align-items:center;gap:5px;font-size:12px;color:#eab308"><div style="width:8px;height:8px;border-radius:50%;background:#eab308"></div>${warn} warning</div>`:''}
+            ${down?`<div style="display:flex;align-items:center;gap:5px;font-size:12px;color:#ef4444"><div style="width:8px;height:8px;border-radius:50%;background:#ef4444"></div>${down} down</div>`:''}
+          </div>
+        </div>
+      </div>
+    </div>`;
+  }
+
+  // Poll history mini heatmap
+  const pollEl=document.getElementById('svcPollHistory');
+  if(!pollEl)return;
+  const byService={};
+  for(const row of _metricsHistory){
+    if(!byService[row.service_name])byService[row.service_name]=[];
+    byService[row.service_name].push(row);
+  }
+  pollEl.innerHTML=Object.keys(_services).map(name=>{
+    const rows=[...( byService[name]||[])].sort((a,b)=>(a.collected_at||'').localeCompare(b.collected_at||'')).slice(-40);
+    const sc=statusClass(_services[name]?.status);
+    const dotColor=sc==='healthy'?'#22c55e':sc==='down'?'#ef4444':'#eab308';
+    const squares=rows.map(row=>{
+      const rt=row.response_time!=null?parseFloat(row.response_time)*1000:null;
+      const s=statusClass(row.status);
+      let bg=s==='down'?'#ef4444':s==='unhealthy'||(rt&&rt>100)?'#eab308':'#22c55e';
+      if(rt===null)bg='#27272a';
+      return`<div style="width:14px;height:14px;border-radius:2px;background:${bg};flex-shrink:0" title="${row.collected_at?new Date(row.collected_at).toLocaleTimeString():'?'}: ${rt!=null?Math.round(rt)+'ms':'down'}"></div>`;
+    }).join('');
+    const u=_uptimeData[name];
+    const uptime=u?.uptime_pct!=null?parseFloat(u.uptime_pct).toFixed(1)+'%':'—';
+    return`<div style="background:rgba(255,255,255,0.025);border:1px solid rgba(255,255,255,0.07);border-radius:10px;padding:10px 14px;display:flex;align-items:center;gap:12px">
+      <div style="display:flex;align-items:center;gap:6px;width:160px;flex-shrink:0">
+        <div style="width:6px;height:6px;border-radius:50%;background:${dotColor}"></div>
+        <span style="font-size:11px;font-weight:600;color:#f4f4f5">${name}</span>
+      </div>
+      <div style="display:flex;gap:2px;flex:1">${squares||'<span style="font-size:11px;color:#52525b">No data</span>'}</div>
+      <div style="font-size:11px;font-family:monospace;color:${u?.uptime_pct>=99?'#22c55e':u?.uptime_pct>=95?'#6366f1':'#eab308'};width:50px;text-align:right;flex-shrink:0">${uptime}</div>
+    </div>`;
+  }).join('');
+}
+
+function renderIncidentsPage(){
+  // Summary cards
+  const cardsEl=document.getElementById('incidentSummaryCards');
+  if(cardsEl){
+    const grouped=groupIncidents(_incidents);
+    const critical=grouped.filter(g=>g.severity==='critical').length;
+    const warning=grouped.filter(g=>g.severity==='warning').length;
+    const withLLM=grouped.filter(g=>g.diagnosis?.diagnosis_source==='claude_api').length;
+    const resolved=_incidents.filter(i=>i.resolved_at).length;
+    const unresolved=_incidents.filter(i=>!i.resolved_at).length;
+    const mkCard=(label,val,color)=>`<div style="background:rgba(255,255,255,0.025);border:1px solid rgba(255,255,255,0.07);border-left:2px solid ${color};border-radius:0 10px 10px 0;padding:12px 14px">
+      <div style="font-size:9px;color:#52525b;text-transform:uppercase;letter-spacing:.6px;margin-bottom:5px">${label}</div>
+      <div style="font-size:22px;font-weight:700;font-family:monospace;color:${color};line-height:1">${val}</div>
+    </div>`;
+    cardsEl.innerHTML=
+      mkCard('Critical',critical,'#ef4444')+
+      mkCard('Warning',warning,'#eab308')+
+      mkCard('Claude AI',withLLM,'#818cf8')+
+      mkCard('Unresolved',unresolved,'#f97316');
+  }
+
+  // Cascade detection
+  const bannerEl=document.getElementById('cascadeBanner');
+  if(bannerEl){
+    const now=Date.now();
+    const recent=_incidents.filter(i=>{
+      const t=new Date(i.created_at).getTime();
+      return now-t<10*60*1000 && !i.resolved_at;
+    });
+    const affectedServices=new Set(recent.map(i=>i.service_name));
+    if(affectedServices.size>=2){
+      bannerEl.style.display='block';
+      bannerEl.innerHTML=`<div style="background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.25);border-radius:10px;padding:12px 16px;display:flex;align-items:center;gap:10px">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2" style="width:16px;height:16px;flex-shrink:0"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>
+        <div>
+          <span style="font-size:12px;font-weight:700;color:#ef4444">Cascade detected</span>
+          <span style="font-size:12px;color:#a1a1aa;margin-left:8px">${affectedServices.size} services with active incidents in last 10 min: ${[...affectedServices].join(', ')}</span>
+        </div>
+      </div>`;
+    } else {
+      bannerEl.style.display='none';
+    }
+  }
+
+  // Filtered incident list
+  const el=document.getElementById('incidentListFull');
+  if(!el)return;
+  let all=groupIncidents(_incidents);
+  if(_incFilter==='critical') all=all.filter(g=>g.severity==='critical');
+  else if(_incFilter==='warning') all=all.filter(g=>g.severity==='warning');
+  else if(_incFilter==='unresolved') all=all.filter(g=>!g.resolved_at);
+  else if(_incFilter==='llm') all=all.filter(g=>g.diagnosis?.diagnosis_source==='claude_api');
+  if(!all.length){el.innerHTML='<div class="empty">No incidents match filter</div>';return;}
+  el.innerHTML=all.map((inc,idx)=>{
+    const diag=inc.diagnosis,isLLM=diag?.diagnosis_source==='claude_api';
+    const time=fmtTime(inc.created_at),conf=diag?.confidence?Math.round(diag.confidence*100)+'% confidence':'';
+    let desc=inc.description||'';const ci=desc.indexOf(': {');if(ci>-1)desc=desc.substring(0,ci);
+    const incType=(inc.incident_type||'').replace(/_/g,' ');
+    const isResolved=!!inc.resolved_at;
+    const mttr=isResolved?Math.round((new Date(inc.resolved_at)-new Date(inc.created_at))/60000):null;
+    const diagButton=!isLLM&&inc.id?`<button class="btn-diagnose" id="diagBtn-incidentListFull-${idx}" onclick="runDiagnosis(${inc.id},'incidentListFull',${idx},event)">🧠 Run LLM Diagnosis</button>`:'';
+    return`<div class="incident ${inc.severity}" onclick="toggleDiag('incidentListFull',${idx})">
+      <div class="inc-header">
+        <div class="inc-left">
+          <span class="inc-service">${inc.service_name}</span>
+          <span class="badge badge-${inc.severity==='critical'?'red':'yellow'}">${inc.severity}</span>
+          ${isLLM?'<span class="badge badge-accent">Claude AI</span>':diag?'<span class="badge badge-gray">Heuristic</span>':''}
+          ${conf?`<span style="font-size:11px;color:var(--muted)">${conf}</span>`:''}
+          ${inc.count>1?`<span class="inc-count">${inc.count}×</span>`:''}
+          ${isResolved?`<span style="font-size:10px;background:rgba(34,197,94,0.1);color:#22c55e;border:1px solid rgba(34,197,94,0.2);border-radius:4px;padding:1px 7px;font-weight:600">✓ resolved${mttr?` · ${mttr}min`:''}</span>`:'<span style="font-size:10px;background:rgba(239,68,68,0.1);color:#ef4444;border:1px solid rgba(239,68,68,0.2);border-radius:4px;padding:1px 7px;font-weight:600">● active</span>'}
+        </div>
+        <span class="inc-time">${time}</span>
+      </div>
+      <div class="inc-type">${incType}${desc?' — '+desc.substring(0,100):''}</div>
+      ${diag?renderDiag(`incidentListFull-${idx}`,diag):'<div style="font-size:11px;color:var(--muted);margin-top:4px">No diagnosis yet</div>'}
+      ${diagButton}
+    </div>`;
+  }).join('');
 }
 
 function renderMetrics(){

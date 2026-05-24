@@ -1,9 +1,35 @@
 <div class="panel" id="panel-incidents">
-      <div class="section">
-        <div class="section-header">
-          <div class="section-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>Incident Log</div>
-          <span id="incidentCountBadge" class="badge badge-gray">0</span>
-        </div>
-        <div class="incident-list" id="incidentListFull"></div>
+  <div class="section">
+
+    <!-- Header with stats -->
+    <div class="section-header">
+      <div class="section-title">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+        Incident Log
+      </div>
+      <span id="incidentCountBadge" class="badge badge-gray">0</span>
+    </div>
+
+    <!-- Incident summary cards -->
+    <div id="incidentSummaryCards" style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:20px"></div>
+
+    <!-- Cascade detection banner -->
+    <div id="cascadeBanner" style="display:none;margin-bottom:16px"></div>
+
+    <!-- Filter bar -->
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px">
+      <span style="font-size:11px;color:var(--muted)">Filter:</span>
+      <div style="display:flex;gap:4px" id="incFilterBtns">
+        <button onclick="filterIncidents('all',this)" style="padding:3px 10px;border-radius:5px;font-size:11px;font-weight:600;border:1px solid var(--accent);background:var(--accent);color:#fff;cursor:pointer">All</button>
+        <button onclick="filterIncidents('critical',this)" style="padding:3px 10px;border-radius:5px;font-size:11px;font-weight:600;border:1px solid var(--border);background:transparent;color:var(--muted);cursor:pointer">Critical</button>
+        <button onclick="filterIncidents('warning',this)" style="padding:3px 10px;border-radius:5px;font-size:11px;font-weight:600;border:1px solid var(--border);background:transparent;color:var(--muted);cursor:pointer">Warning</button>
+        <button onclick="filterIncidents('unresolved',this)" style="padding:3px 10px;border-radius:5px;font-size:11px;font-weight:600;border:1px solid var(--border);background:transparent;color:var(--muted);cursor:pointer">Unresolved</button>
+        <button onclick="filterIncidents('llm',this)" style="padding:3px 10px;border-radius:5px;font-size:11px;font-weight:600;border:1px solid var(--border);background:transparent;color:var(--muted);cursor:pointer">Claude AI</button>
       </div>
     </div>
+
+    <!-- Incident list -->
+    <div class="incident-list" id="incidentListFull"></div>
+
+  </div>
+</div>

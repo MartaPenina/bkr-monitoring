@@ -1,9 +1,43 @@
 <div class="panel" id="panel-services">
-      <div class="section">
-        <div class="section-header">
-          <div class="section-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/></svg>All Services</div>
-          <span style="font-size:11px;color:var(--muted)">Uptime calculated over last 24h</span>
+  <div class="section">
+
+    <!-- Header -->
+    <div class="section-header">
+      <div class="section-title">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.22 4.22l2.12 2.12M17.66 17.66l2.12 2.12M2 12h3M19 12h3M4.22 19.78l2.12-2.12M17.66 6.34l2.12-2.12"/></svg>
+        All Services
+      </div>
+      <div style="display:flex;align-items:center;gap:10px">
+        <span style="font-size:11px;color:var(--muted)">Uptime over last 24h</span>
+        <div style="display:flex;gap:8px" id="svcFilterBtns">
+          <button onclick="filterServices('all',this)" style="padding:3px 10px;border-radius:5px;font-size:11px;font-weight:600;border:1px solid var(--accent);background:var(--accent);color:#fff;cursor:pointer">All</button>
+          <button onclick="filterServices('down',this)" style="padding:3px 10px;border-radius:5px;font-size:11px;font-weight:600;border:1px solid var(--border);background:transparent;color:var(--muted);cursor:pointer">Down</button>
+          <button onclick="filterServices('warning',this)" style="padding:3px 10px;border-radius:5px;font-size:11px;font-weight:600;border:1px solid var(--border);background:transparent;color:var(--muted);cursor:pointer">Warning</button>
         </div>
-        <div class="service-grid" id="serviceGridFull"></div>
       </div>
     </div>
+
+    <!-- Service grid -->
+    <div class="service-grid" id="serviceGridFull"></div>
+
+    <!-- System health score -->
+    <div class="section-header" style="margin-top:24px">
+      <div class="section-title">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+        System health score
+      </div>
+    </div>
+    <div id="svcHealthScore" style="margin-bottom:20px"></div>
+
+    <!-- Poll history mini heatmap per service -->
+    <div class="section-header">
+      <div class="section-title">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+        Recent poll history — last 40 checks
+      </div>
+      <span style="font-size:11px;color:var(--muted)">each square = 1 poll · green healthy · yellow slow · red down</span>
+    </div>
+    <div id="svcPollHistory" style="display:flex;flex-direction:column;gap:8px;margin-bottom:20px"></div>
+
+  </div>
+</div>
