@@ -408,7 +408,7 @@ function renderErrorChart(byService){
   const labels=times.map(t=>new Date(t+'Z').toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'}));
   _charts['_err']=new Chart(canvas.getContext('2d'),{
     type:'bar',
-    data:{labels,datasets:[{label:'Error %',data:errData,backgroundColor:errData.map(v=>v>0?'rgba(239,68,68,0.5)':'rgba(34,197,94,0.15)'),borderColor:errData.map(v=>v>0?'#ef4444':'#22c55e'),borderWidth:1,borderRadius:2}]},
+    data:{labels,datasets:[{label:'Error %',data:errData,backgroundColor:errData.map(v=>v>0?'rgba(239,68,68,0.5)':'rgba(34,197,94,0.25)'),borderColor:errData.map(v=>v>0?'#ef4444':'rgba(34,197,94,0.6)'),borderWidth:1,borderRadius:2,minBarLength:3}]},
     options:{
       responsive:true,maintainAspectRatio:false,animation:{duration:200},
       plugins:{legend:{display:false},tooltip:{backgroundColor:'#1c1c1f',borderColor:'#27272a',borderWidth:1,callbacks:{title:()=>'',label:i=>i.raw+'% error rate'}}},
