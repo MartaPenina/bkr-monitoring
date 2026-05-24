@@ -1,0 +1,75 @@
+<div class="panel" id="panel-metrics">
+      <div class="section-header" style="margin-bottom:16px">
+        <div class="section-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>System Metrics</div>
+        <div style="display:flex;align-items:center;gap:8px">
+          <div style="display:flex;gap:4px" id="timeRangeBtns">
+            <button class="time-range-btn active" onclick="setTimeRange('40polls',this)">40 polls</button>
+            <button class="time-range-btn" onclick="setTimeRange('0.5',this)">30m</button>
+            <button class="time-range-btn" onclick="setTimeRange('1',this)">1h</button>
+            <button class="time-range-btn" onclick="setTimeRange('6',this)">6h</button>
+            <button class="time-range-btn" onclick="setTimeRange('24',this)">24h</button>
+          </div>
+          <span style="font-size:11px;color:var(--muted)">Auto-refreshes every 20s</span>
+        </div>
+      </div>
+
+      <div class="metrics-golden">
+        <div class="golden-card" style="border-top:2px solid #818cf8;border-radius:0 0 12px 12px">
+          <div class="golden-label"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:10px;height:10px"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>P95 latency</div>
+          <div class="golden-val" style="color:#818cf8" id="gs-p95">—</div>
+          <div class="golden-sub" id="gs-avg-sub">avg — across services</div>
+        </div>
+        <div class="golden-card" style="border-top:2px solid var(--yes);border-radius:0 0 12px 12px">
+          <div class="golden-label"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:10px;height:10px"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>Poll rate</div>
+          <div class="golden-val" style="color:var(--yes)">10/min</div>
+          <div class="golden-sub">5 services · 2 polls/min</div>
+        </div>
+        <div class="golden-card" style="border-top:2px solid var(--no);border-radius:0 0 12px 12px">
+          <div class="golden-label"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:10px;height:10px"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>Error rate</div>
+          <div class="golden-val" style="color:var(--no)" id="gs-err">—</div>
+          <div class="golden-sub" id="gs-err-sub">failed health checks</div>
+        </div>
+        <div class="golden-card" style="border-top:2px solid var(--yes);border-radius:0 0 12px 12px">
+          <div class="golden-label"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:10px;height:10px"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>Healthy now</div>
+          <div class="golden-val" style="color:var(--yes)" id="gs-healthy">—</div>
+          <div class="golden-sub" id="gs-healthy-sub">services up</div>
+        </div>
+      </div>
+
+      <div class="section-header" style="margin-bottom:10px">
+        <div class="section-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>Response time — P50 · P95 · Max per service</div>
+      </div>
+      <div class="metrics-charts-grid" id="metricsGrid"></div>
+
+      <div class="section-header" style="margin-bottom:10px">
+        <div class="section-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>Health heatmap — status per poll</div>
+      </div>
+      <div class="heatmap-inner">
+        <div id="hmGrid"></div>
+        <div class="hm-legend">
+          <div class="hm-legend-item"><div class="hm-legend-box" style="background:#22c55e"></div>Healthy</div>
+          <div class="hm-legend-item"><div class="hm-legend-box" style="background:#eab308"></div>High latency</div>
+          <div class="hm-legend-item"><div class="hm-legend-box" style="background:#ef4444"></div>Down</div>
+          <div class="hm-legend-item"><div class="hm-legend-box" style="background:#312e81;border:1px solid #4338ca"></div>Incident</div>
+        </div>
+      </div>
+
+      <div class="section-header" style="margin-bottom:10px">
+        <div class="section-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>Error rate over time</div>
+      </div>
+      <div class="err-inner">
+        <div class="err-wrap">
+          <canvas id="errChart" role="img" aria-label="Error rate over time">Error rate per polling interval.</canvas>
+        </div>
+      </div>
+
+      <div class="section-header" style="margin-bottom:10px">
+        <div class="section-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>SLA compliance — uptime 24h · target 99%</div>
+      </div>
+      <div class="sla-grid" id="slaGrid"></div>
+
+      <div class="section-header" style="margin:16px 0 10px">
+        <div class="section-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>Mean time to recovery</div>
+      </div>
+      <div class="mttr-grid" id="mttrGrid"></div>
+    </div>

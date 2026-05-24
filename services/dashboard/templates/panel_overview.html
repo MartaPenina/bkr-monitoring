@@ -1,0 +1,22 @@
+<div class="panel active" id="panel-overview">
+      <div class="stats-grid">
+        <div class="stat-card"><div class="stat-label">Total Services</div><div class="stat-value" id="statTotal">—</div><div class="stat-sub">Monitored endpoints</div></div>
+        <div class="stat-card"><div class="stat-label">Healthy</div><div class="stat-value green" id="statHealthy">—</div><div class="stat-sub" id="statHealthySub">All systems operational</div></div>
+        <div class="stat-card"><div class="stat-label">Incidents (unique)</div><div class="stat-value red" id="statIncidents">—</div><div class="stat-sub" id="statIncSub">Grouped anomalies</div></div>
+        <div class="stat-card"><div class="stat-label">LLM Diagnoses</div><div class="stat-value accent" id="statLLM">—</div><div class="stat-sub">Claude AI analyses</div></div>
+      </div>
+      <div class="section">
+        <div class="section-header">
+          <div class="section-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.22 4.22l2.12 2.12M17.66 17.66l2.12 2.12M2 12h3M19 12h3"/></svg>Service Status</div>
+          <span id="systemBadge" class="badge badge-gray">Loading…</span>
+        </div>
+        <div class="service-grid" id="serviceGridOverview"></div>
+      </div>
+      <div class="section">
+        <div class="section-header">
+          <div class="section-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>Recent Incidents</div>
+          <button class="btn btn-ghost" style="font-size:11px;padding:5px 10px" onclick="switchTabByName('incidents')">View all →</button>
+        </div>
+        <div class="incident-list" id="incidentListOverview"></div>
+      </div>
+    </div>

@@ -1,0 +1,21 @@
+<div class="panel" id="panel-topology">
+      <div class="section">
+        <div class="section-header">
+          <div class="section-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/></svg>Service Dependency Graph</div>
+        </div>
+        <div class="dep-graph-wrap">
+          <canvas id="depCanvas"></canvas>
+          <div class="topo-legend">
+            <div class="legend-item"><div class="legend-dot" style="background:var(--yes)"></div>Healthy</div>
+            <div class="legend-item"><div class="legend-dot" style="background:var(--warn)"></div>Warning</div>
+            <div class="legend-item"><div class="legend-dot" style="background:var(--no)"></div>Down</div>
+            <div class="legend-item"><div class="legend-dot" style="background:var(--muted)"></div>Unknown</div>
+            <span style="margin-left:auto;font-size:11px;color:var(--muted)">Arrow → depends on</span>
+          </div>
+        </div>
+        <div class="section-header" style="margin-top:8px">
+          <div class="section-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>Fault Propagation Chains</div>
+        </div>
+        <div class="fault-chains-grid" id="faultChainsGrid"></div>
+      </div>
+    </div>
