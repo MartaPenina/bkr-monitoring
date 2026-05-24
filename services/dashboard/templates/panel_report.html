@@ -1,0 +1,43 @@
+<div class="panel" id="panel-report">
+  <div class="section">
+
+    <div class="section-header">
+      <div class="section-title">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+        System Health Report
+      </div>
+      <span id="reportTimestamp" style="font-size:11px;color:var(--muted);font-family:monospace"></span>
+    </div>
+
+    <!-- Overall status -->
+    <div id="reportOverall" style="margin-bottom:20px"></div>
+
+    <!-- Per-service report -->
+    <div class="section-header">
+      <div class="section-title">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/></svg>
+        Service reliability report
+      </div>
+    </div>
+    <div id="reportServices" style="margin-bottom:20px"></div>
+
+    <!-- Key findings -->
+    <div class="section-header">
+      <div class="section-title">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        Key findings &amp; recommendations
+      </div>
+    </div>
+    <div id="reportFindings" style="margin-bottom:20px"></div>
+
+    <!-- LLM diagnosis summary -->
+    <div class="section-header">
+      <div class="section-title">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+        LLM diagnosis effectiveness
+      </div>
+    </div>
+    <div id="reportLLM" style="margin-bottom:20px"></div>
+
+  </div>
+</div>
