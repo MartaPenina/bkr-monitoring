@@ -102,7 +102,7 @@ function renderAll(){
   renderIncidentList('incidentListOverview',5);
   if(_activePanel==='incidents')renderIncidentsPage();
   updateIncidentBadge();
-  if(_activePanel==='topology'){renderDepGraph();renderTopoServiceSummary();renderTopoDepMatrix();renderTopoTimeline();renderTopoRisk();}
+  if(_activePanel==='topology')renderDepGraph();
   if(_activePanel==='metrics')renderMetrics();
 }
 
