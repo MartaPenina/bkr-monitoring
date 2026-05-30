@@ -361,6 +361,8 @@ def trigger_diagnosis(service_name: str, anomaly: dict, incident_id: int):
         log_json("error", "Cannot reach diagnostic engine", error=str(e))
 
 
+N8N_GMAIL_WEBHOOK_URL = os.environ.get("N8N_GMAIL_WEBHOOK_URL", "")
+
 def notify_n8n(service_name: str, anomaly: dict, diagnosis: dict = None):
     if not N8N_WEBHOOK_URL:
         return
@@ -375,9 +377,12 @@ def notify_n8n(service_name: str, anomaly: dict, diagnosis: dict = None):
         }
         requests.post(N8N_WEBHOOK_URL, json=payload, timeout=5)
         log_json("info", "n8n notified", service=service_name)
+        
+        if N8N_GMAIL_WEBHOOK_URL:
+            requests.post(N8N_GMAIL_WEBHOOK_URL, json=payload, timeout=5)
+            log_json("info", "Gmail notified", service=service_name)
     except Exception as e:
         log_json("warning", "Failed to notify n8n", error=str(e))
-
 
 # ── Main polling loop ───────────────────────────────────────────────────────
 def poll_all_services():
