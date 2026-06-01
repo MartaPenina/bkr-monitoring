@@ -33,7 +33,7 @@ DATABASE_URL = os.environ.get("DATABASE_URL", "postgresql://monitor:monitor@post
 DIAGNOSTIC_ENGINE_URL = os.environ.get("DIAGNOSTIC_ENGINE_URL", "http://diagnostic-engine:8090")
 POLL_INTERVAL = int(os.environ.get("POLL_INTERVAL", "30"))
 PORT = int(os.environ.get("PORT", "8085"))
-N8N_WEBHOOK_URL = os.environ.get("N8N_WEBHOOK_URL", "")
+N8N_SLACK_WEBHOOK_URL = os.environ.get("N8N_SLACK_WEBHOOK_URL", "")
 
 RESPONSE_TIME_THRESHOLD = float(os.environ.get("RESPONSE_TIME_THRESHOLD", "5.0"))
 ERROR_RATE_THRESHOLD = float(os.environ.get("ERROR_RATE_THRESHOLD", "0.5"))
@@ -360,11 +360,8 @@ def trigger_diagnosis(service_name: str, anomaly: dict, incident_id: int):
     except Exception as e:
         log_json("error", "Cannot reach diagnostic engine", error=str(e))
 
-
-N8N_GMAIL_WEBHOOK_URL = os.environ.get("N8N_GMAIL_WEBHOOK_URL", "")
-
 def notify_n8n(service_name: str, anomaly: dict, diagnosis: dict = None):
-    if not N8N_WEBHOOK_URL:
+    if not N8N_SLACK_WEBHOOK_URL:
         return
     try:
         payload = {
@@ -375,14 +372,10 @@ def notify_n8n(service_name: str, anomaly: dict, diagnosis: dict = None):
             "timestamp": datetime.now(timezone.utc).isoformat(),
             "dashboard_url": "https://fault-lens-penina.pp.ua",
         }
-        requests.post(N8N_WEBHOOK_URL, json=payload, timeout=5)
-        log_json("info", "n8n notified", service=service_name)
-        
-        if N8N_GMAIL_WEBHOOK_URL:
-            requests.post(N8N_GMAIL_WEBHOOK_URL, json=payload, timeout=5)
-            log_json("info", "Gmail notified", service=service_name)
+        requests.post(N8N_SLACK_WEBHOOK_URL, json=payload, timeout=5)
+        log_json("info", "Slack notified", service=service_name)
     except Exception as e:
-        log_json("warning", "Failed to notify n8n", error=str(e))
+        log_json("warning", "Failed to notify Slack", error=str(e))
 
 # ── Main polling loop ───────────────────────────────────────────────────────
 def poll_all_services():
