@@ -2,3 +2,6 @@ flask==3.1.0
 psycopg2-binary==2.9.10
 requests==2.32.3
 pyyaml==6.0.2
+psutil>=5.9.0
+
+
