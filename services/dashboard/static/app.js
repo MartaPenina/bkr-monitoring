@@ -145,6 +145,9 @@ function renderServiceGrid(id,limit){
         <div class="svc-metric"><div class="svc-metric-label">Last Check</div><div class="svc-metric-value">${lc}</div></div>
         <div class="svc-metric"><div class="svc-metric-label">Uptime 24h</div><div class="svc-metric-value ${uptimeClass}">${uptimePct}</div></div>
         <div class="svc-metric"><div class="svc-metric-label">Avg Response</div><div class="svc-metric-value">${avgMs}</div></div>
+        <div class="svc-metric"><div class="svc-metric-label">Error Rate</div><div class="svc-metric-value ${(s.error_rate||0)>10?'red':(s.error_rate||0)>5?'warn':'green'}">${s.error_rate!=null?s.error_rate+'%':'—'}</div></div>
+        <div class="svc-metric"><div class="svc-metric-label">CPU</div><div class="svc-metric-value ${(s.cpu_percent||0)>80?'red':(s.cpu_percent||0)>60?'warn':'green'}">${s.cpu_percent!=null?s.cpu_percent+'%':'—'}</div></div>
+        <div class="svc-metric"><div class="svc-metric-label">RAM</div><div class="svc-metric-value ${(s.ram_percent||0)>85?'red':(s.ram_percent||0)>70?'warn':'green'}">${s.ram_percent!=null?s.ram_percent+'%':'—'}</div></div>
       </div>
       ${fails>0?`<div class="svc-failures"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:11px;height:11px"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>${fails} consecutive failures</div>`:''}
     </div>`;
@@ -510,11 +513,14 @@ function renderServicesPage(){
       return`<div class="service-card ${sc}">
         <div class="svc-header"><div class="svc-name-row"><div class="svc-dot ${s.status||'unknown'}"></div><span class="svc-name">${name}</span></div>${statusBadge(s.status)}</div>
         <div class="svc-metrics">
-          <div class="svc-metric"><div class="svc-metric-label">Response</div><div class="svc-metric-value ${rtc}">${rt}</div></div>
-          <div class="svc-metric"><div class="svc-metric-label">Last Check</div><div class="svc-metric-value">${lc}</div></div>
-          <div class="svc-metric"><div class="svc-metric-label">Uptime 24h</div><div class="svc-metric-value ${uptimeClass}">${uptimePct}</div></div>
-          <div class="svc-metric"><div class="svc-metric-label">Avg Response</div><div class="svc-metric-value">${avgMs}</div></div>
-        </div>
+           <div class="svc-metric"><div class="svc-metric-label">Response</div><div class="svc-metric-value ${rtc}">${rt}</div></div>
+           <div class="svc-metric"><div class="svc-metric-label">Last Check</div><div class="svc-metric-value">${lc}</div></div>
+           <div class="svc-metric"><div class="svc-metric-label">Uptime 24h</div><div class="svc-metric-value ${uptimeClass}">${uptimePct}</div></div>
+           <div class="svc-metric"><div class="svc-metric-label">Avg Response</div><div class="svc-metric-value">${avgMs}</div></div>
+           <div class="svc-metric"><div class="svc-metric-label">Error Rate</div><div class="svc-metric-value ${(s.error_rate||0)>10?'red':(s.error_rate||0)>5?'warn':'green'}">${s.error_rate!=null?s.error_rate+'%':'—'}</div></div>
+           <div class="svc-metric"><div class="svc-metric-label">CPU</div><div class="svc-metric-value ${(s.cpu_percent||0)>80?'red':(s.cpu_percent||0)>60?'warn':'green'}">${s.cpu_percent!=null?s.cpu_percent+'%':'—'}</div></div>
+           <div class="svc-metric"><div class="svc-metric-label">RAM</div><div class="svc-metric-value ${(s.ram_percent||0)>85?'red':(s.ram_percent||0)>70?'warn':'green'}">${s.ram_percent!=null?s.ram_percent+'%':'—'}</div></div>
+      </div>
         ${fails>0?`<div class="svc-failures"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:11px;height:11px"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>${fails} consecutive failures</div>`:''}
       </div>`;
     }).join('');
