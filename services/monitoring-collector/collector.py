@@ -3,16 +3,18 @@ monitoring-collector — The central nervous system of the monitoring platform.
 
 Responsibilities:
   1. Poll health-check endpoints of all services every POLL_INTERVAL seconds
-  2. Collect metrics: response time, status, error counts
-  3. Store metrics in PostgreSQL (TimescaleDB hypertable)
-  4. Detect anomalies (threshold breaches, service down, latency spikes)
+  2. Collect metrics: response time, status, error counts, error rate, CPU, RAM
+  3. Store metrics in PostgreSQL
+  4. Detect anomalies (threshold breaches, service down, latency spikes,
+     high error rate, high CPU/RAM)
   5. When anomaly detected → call the Diagnostic Engine API
 
 Architecture note:
-  This is Layer 2 in the three-layer architecture described in the thesis.
+  This is Layer 2 in the four-layer architecture described in the thesis.
   Layer 1 = microservices (object of monitoring)
   Layer 2 = this collector
   Layer 3 = diagnostic engine (LLM)
+  Layer 4 = notifications (n8n + Slack)
 """
 import json
 import os
@@ -22,6 +24,7 @@ import threading
 from datetime import datetime, timezone
 from pathlib import Path
 
+import psutil
 import psycopg2
 import psycopg2.extras
 import requests
@@ -36,8 +39,11 @@ PORT = int(os.environ.get("PORT", "8085"))
 N8N_SLACK_WEBHOOK_URL = os.environ.get("N8N_SLACK_WEBHOOK_URL", "")
 
 RESPONSE_TIME_THRESHOLD = float(os.environ.get("RESPONSE_TIME_THRESHOLD", "5.0"))
-ERROR_RATE_THRESHOLD = float(os.environ.get("ERROR_RATE_THRESHOLD", "0.5"))
+ERROR_RATE_THRESHOLD = float(os.environ.get("ERROR_RATE_THRESHOLD", "10.0"))   # %
+CPU_THRESHOLD = float(os.environ.get("CPU_THRESHOLD", "80.0"))                 # %
+RAM_THRESHOLD = float(os.environ.get("RAM_THRESHOLD", "85.0"))                 # %
 CONSECUTIVE_FAILURES_THRESHOLD = int(os.environ.get("CONSECUTIVE_FAILURES_THRESHOLD", "2"))
+ERROR_RATE_WINDOW = int(os.environ.get("ERROR_RATE_WINDOW", "10"))             # last N polls
 
 
 def log_json(level: str, message: str, **extra):
@@ -80,6 +86,9 @@ def init_service_state():
             "last_error": None,
             "error_count": 0,
             "success_count": 0,
+            "error_rate": 0.0,
+            "cpu_percent": None,
+            "ram_percent": None,
         }
 
 
@@ -95,6 +104,9 @@ CREATE TABLE IF NOT EXISTS service_metrics (
     response_time   DOUBLE PRECISION,
     http_status     INTEGER,
     error_message   TEXT,
+    error_rate      DOUBLE PRECISION,
+    cpu_percent     DOUBLE PRECISION,
+    ram_percent     DOUBLE PRECISION,
     details         JSONB,
     collected_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -118,6 +130,13 @@ CREATE INDEX IF NOT EXISTS idx_incidents_service_time
     ON incidents (service_name, created_at DESC);
 """
 
+# Migration: add new columns if they don't exist (for existing deployments)
+METRICS_MIGRATION = """
+ALTER TABLE service_metrics ADD COLUMN IF NOT EXISTS error_rate DOUBLE PRECISION;
+ALTER TABLE service_metrics ADD COLUMN IF NOT EXISTS cpu_percent DOUBLE PRECISION;
+ALTER TABLE service_metrics ADD COLUMN IF NOT EXISTS ram_percent DOUBLE PRECISION;
+"""
+
 
 def get_db():
     return psycopg2.connect(DATABASE_URL, cursor_factory=psycopg2.extras.RealDictCursor)
@@ -129,6 +148,7 @@ def init_db():
             conn = get_db()
             with conn.cursor() as cur:
                 cur.execute(METRICS_SCHEMA)
+                cur.execute(METRICS_MIGRATION)
             conn.commit()
             conn.close()
             log_json("info", "Monitoring schema initialized")
@@ -140,15 +160,18 @@ def init_db():
     sys.exit(1)
 
 
-def store_metric(service_name, status, response_time, http_status, error_msg, details):
+def store_metric(service_name, status, response_time, http_status, error_msg,
+                 error_rate, cpu_percent, ram_percent, details):
     try:
         conn = get_db()
         with conn.cursor() as cur:
             cur.execute(
                 """INSERT INTO service_metrics
-                   (service_name, status, response_time, http_status, error_message, details, collected_at)
-                   VALUES (%s, %s, %s, %s, %s, %s, %s)""",
+                   (service_name, status, response_time, http_status, error_message,
+                    error_rate, cpu_percent, ram_percent, details, collected_at)
+                   VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)""",
                 (service_name, status, response_time, http_status, error_msg,
+                 error_rate, cpu_percent, ram_percent,
                  json.dumps(details) if details else None,
                  datetime.now(timezone.utc)),
             )
@@ -191,6 +214,7 @@ def update_incident_diagnosis(incident_id, diagnosis):
     except Exception as e:
         log_json("error", "Failed to update incident diagnosis", error=str(e))
 
+
 def resolve_incident(service_name):
     try:
         conn = get_db()
@@ -206,13 +230,52 @@ def resolve_incident(service_name):
     except Exception as e:
         log_json("error", "Failed to resolve incident", service=service_name, error=str(e))
 
+
+# ── Infrastructure metrics (collector host) ─────────────────────────────────
+def get_collector_infra_metrics() -> dict:
+    """Collect CPU and RAM of the monitoring-collector process/host via psutil."""
+    try:
+        cpu = psutil.cpu_percent(interval=0.5)
+        ram = psutil.virtual_memory().percent
+        return {"cpu_percent": round(cpu, 1), "ram_percent": round(ram, 1)}
+    except Exception:
+        return {"cpu_percent": None, "ram_percent": None}
+
+
+# ── Error rate calculation ──────────────────────────────────────────────────
+def calculate_error_rate(service_name: str, window: int = ERROR_RATE_WINDOW) -> float:
+    """Calculate error rate (%) from last N polls in DB."""
+    try:
+        conn = get_db()
+        with conn.cursor() as cur:
+            cur.execute(
+                """SELECT status FROM service_metrics
+                   WHERE service_name = %s
+                   ORDER BY collected_at DESC LIMIT %s""",
+                (service_name, window),
+            )
+            rows = cur.fetchall()
+        conn.close()
+        if not rows:
+            return 0.0
+        total = len(rows)
+        errors = sum(1 for r in rows if r["status"] not in ("healthy",))
+        return round((errors / total) * 100, 1)
+    except Exception:
+        return 0.0
+
+
 # ── Health checking ─────────────────────────────────────────────────────────
 def check_service_health(service_name: str, service_config: dict) -> dict:
     url = service_config["url"]
     health_ep = service_config.get("health_endpoint")
 
     if not health_ep:
-        return {"status": "healthy", "response_time": 0, "http_status": None, "details": {}}
+        return {
+            "status": "healthy", "response_time": 0,
+            "http_status": None, "details": {},
+            "error": None,
+        }
 
     check_url = f"{url}{health_ep}"
     start = time.time()
@@ -234,18 +297,28 @@ def check_service_health(service_name: str, service_config: dict) -> dict:
             "error": None,
         }
     except requests.exceptions.ConnectionError:
-        return {"status": "down", "response_time": time.time() - start, "http_status": None, "details": {}, "error": "Connection refused"}
+        return {"status": "down", "response_time": time.time() - start,
+                "http_status": None, "details": {}, "error": "Connection refused"}
     except requests.exceptions.Timeout:
-        return {"status": "timeout", "response_time": 5.0, "http_status": None, "details": {}, "error": "Request timeout (5s)"}
+        return {"status": "timeout", "response_time": 5.0,
+                "http_status": None, "details": {}, "error": "Request timeout (5s)"}
     except Exception as e:
-        return {"status": "error", "response_time": time.time() - start, "http_status": None, "details": {}, "error": str(e)}
+        return {"status": "error", "response_time": time.time() - start,
+                "http_status": None, "details": {}, "error": str(e)}
 
 
 # ── Anomaly detection ───────────────────────────────────────────────────────
-def detect_anomaly(service_name: str, result: dict) -> dict | None:
+def detect_anomaly(service_name: str, result: dict,
+                   error_rate: float, cpu: float | None, ram: float | None) -> dict | None:
     with _state_lock:
         state = _service_state[service_name]
 
+        # Update state with new metrics
+        state["error_rate"] = error_rate
+        state["cpu_percent"] = cpu
+        state["ram_percent"] = ram
+
+        # 1. Service down / unhealthy
         if result["status"] in ("down", "timeout", "error", "unhealthy"):
             state["consecutive_failures"] += 1
             state["error_count"] += 1
@@ -258,6 +331,7 @@ def detect_anomaly(service_name: str, result: dict) -> dict | None:
                     "severity": "critical",
                     "consecutive_failures": state["consecutive_failures"],
                     "last_error": state["last_error"],
+                    "error_rate": error_rate,
                 }
         else:
             was_down = state["consecutive_failures"] >= CONSECUTIVE_FAILURES_THRESHOLD
@@ -273,12 +347,41 @@ def detect_anomaly(service_name: str, result: dict) -> dict | None:
         state["last_response_time"] = result.get("response_time")
         state["last_check"] = datetime.now(timezone.utc).isoformat()
 
+        # 2. High latency
         if result.get("response_time") and result["response_time"] > RESPONSE_TIME_THRESHOLD:
             return {
                 "type": "high_latency",
                 "severity": "warning",
                 "response_time": result["response_time"],
                 "threshold": RESPONSE_TIME_THRESHOLD,
+                "error_rate": error_rate,
+            }
+
+        # 3. High error rate
+        if error_rate > ERROR_RATE_THRESHOLD:
+            return {
+                "type": "high_error_rate",
+                "severity": "warning",
+                "error_rate": error_rate,
+                "threshold": ERROR_RATE_THRESHOLD,
+            }
+
+        # 4. High CPU (collector host — infrastructure monitoring)
+        if cpu is not None and cpu > CPU_THRESHOLD:
+            return {
+                "type": "high_cpu",
+                "severity": "warning",
+                "cpu_percent": cpu,
+                "threshold": CPU_THRESHOLD,
+            }
+
+        # 5. High RAM (collector host — infrastructure monitoring)
+        if ram is not None and ram > RAM_THRESHOLD:
+            return {
+                "type": "high_ram",
+                "severity": "warning",
+                "ram_percent": ram,
+                "threshold": RAM_THRESHOLD,
             }
 
     return None
@@ -290,7 +393,8 @@ def get_recent_metrics(service_name: str, limit: int = 10) -> list:
         conn = get_db()
         with conn.cursor() as cur:
             cur.execute(
-                """SELECT service_name, status, response_time, http_status, error_message, collected_at
+                """SELECT service_name, status, response_time, http_status,
+                          error_message, error_rate, cpu_percent, ram_percent, collected_at
                    FROM service_metrics WHERE service_name = %s
                    ORDER BY collected_at DESC LIMIT %s""",
                 (service_name, limit),
@@ -360,6 +464,7 @@ def trigger_diagnosis(service_name: str, anomaly: dict, incident_id: int):
     except Exception as e:
         log_json("error", "Cannot reach diagnostic engine", error=str(e))
 
+
 def notify_n8n(service_name: str, anomaly: dict, diagnosis: dict = None):
     if not N8N_SLACK_WEBHOOK_URL:
         return
@@ -377,14 +482,23 @@ def notify_n8n(service_name: str, anomaly: dict, diagnosis: dict = None):
     except Exception as e:
         log_json("warning", "Failed to notify Slack", error=str(e))
 
+
 # ── Main polling loop ───────────────────────────────────────────────────────
 def poll_all_services():
     global _total_polls
     _total_polls += 1
     log_json("info", f"Poll cycle #{_total_polls}")
 
+    # Collect infrastructure metrics once per cycle (collector host)
+    infra = get_collector_infra_metrics()
+    cpu = infra["cpu_percent"]
+    ram = infra["ram_percent"]
+
     for svc_name, svc_config in SERVICES.items():
         result = check_service_health(svc_name, svc_config)
+
+        # Calculate error rate from DB history
+        error_rate = calculate_error_rate(svc_name)
 
         store_metric(
             service_name=svc_name,
@@ -392,10 +506,13 @@ def poll_all_services():
             response_time=result.get("response_time"),
             http_status=result.get("http_status"),
             error_msg=result.get("error"),
+            error_rate=error_rate,
+            cpu_percent=cpu,
+            ram_percent=ram,
             details=result.get("details"),
         )
 
-        anomaly = detect_anomaly(svc_name, result)
+        anomaly = detect_anomaly(svc_name, result, error_rate, cpu, ram)
         if anomaly:
             log_json("warning", "Anomaly detected", service=svc_name,
                      anomaly_type=anomaly["type"], severity=anomaly["severity"])
@@ -432,6 +549,7 @@ flask_app = Flask(__name__)
 
 @flask_app.route("/health")
 def health():
+    infra = get_collector_infra_metrics()
     return jsonify({
         "status": "healthy",
         "service": "monitoring-collector",
@@ -439,12 +557,22 @@ def health():
         "total_polls": _total_polls,
         "poll_interval": POLL_INTERVAL,
         "monitored_services": len(SERVICES),
+        "collector_cpu_percent": infra["cpu_percent"],
+        "collector_ram_percent": infra["ram_percent"],
     })
 
 
 @flask_app.route("/api/services")
 def api_services():
-    return jsonify(get_all_service_states())
+    states = get_all_service_states()
+    # Attach live infra metrics to each service state
+    infra = get_collector_infra_metrics()
+    for svc in states.values():
+        if svc.get("cpu_percent") is None:
+            svc["cpu_percent"] = infra["cpu_percent"]
+        if svc.get("ram_percent") is None:
+            svc["ram_percent"] = infra["ram_percent"]
+    return jsonify(states)
 
 
 @flask_app.route("/api/metrics/<service_name>")
@@ -480,6 +608,17 @@ def api_incidents():
 @flask_app.route("/api/service-map")
 def api_service_map():
     return jsonify(SERVICE_MAP)
+
+
+@flask_app.route("/api/infra-metrics")
+def api_infra_metrics():
+    """Return current infrastructure metrics of the collector host."""
+    infra = get_collector_infra_metrics()
+    return jsonify({
+        "cpu_percent": infra["cpu_percent"],
+        "ram_percent": infra["ram_percent"],
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+    })
 
 
 @flask_app.route("/api/incidents/<int:incident_id>/diagnose", methods=["POST"])
